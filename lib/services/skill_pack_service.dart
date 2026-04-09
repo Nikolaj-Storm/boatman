@@ -57,6 +57,40 @@ class SkillPackService {
       category: 'rigging',
       filename: 'rigging_sails_deck.md',
     ),
+    // Safety and diagnostics (cross-cutting skills)
+    SkillPack(
+      id: 'repair_safety_triage',
+      name: 'Repair Safety Triage',
+      description: 'Safety-first decision framework: risk assessment, isolation/lockout, '
+          'when to stop, when to call a pro, pre-repair checklists, and emergency tool kit.',
+      category: 'safety',
+      filename: 'repair_safety_triage.md',
+    ),
+    SkillPack(
+      id: 'field_diagnostics',
+      name: 'Field Diagnostics',
+      description: 'Structured troubleshooting interview: decision trees for engine, electrical, '
+          'and water problems. Five-senses diagnostic, common misdiagnoses, and logging.',
+      category: 'diagnostics',
+      filename: 'field_diagnostics.md',
+    ),
+    // Specialized systems
+    SkillPack(
+      id: 'hydraulics_and_hoses',
+      name: 'Hydraulics & Hoses',
+      description: 'Hydraulic steering, autopilot drives, trim tabs, hose inspection, '
+          'bleeding procedures, and emergency steering.',
+      category: 'hydraulics',
+      filename: 'hydraulics_and_hoses.md',
+    ),
+    SkillPack(
+      id: 'corrosion_and_fasteners',
+      name: 'Corrosion & Fasteners',
+      description: 'Galvanic corrosion, stray current, sacrificial anodes, marine fastener '
+          'selection, seized bolt extraction, and hardware bedding.',
+      category: 'corrosion',
+      filename: 'corrosion_and_fasteners.md',
+    ),
   ];
 
   /// Load a skill pack from assets, chunk it, tag it, and save to database
@@ -161,6 +195,31 @@ class SkillPackService {
     'running_rig': ['halyard', 'sheet', 'control line', 'dyneema', 'block', 'clutch'],
     'sails': ['sail repair', 'sail tape', 'batten', 'uv cover', 'leech line', 'stitching', 'palm and needle'],
     'hardware': ['winch', 'roller furling', 'furler', 'gooseneck', 'vang', 'traveler'],
+    // Safety sub-topics
+    'isolation': ['lockout', 'tagout', 'isolate', 'disconnect', 'shut off', 'breaker off'],
+    'risk_assess': ['severity', 'critical', 'danger', 'risk', 'safe to', 'is it safe'],
+    'pre_repair': ['before starting', 'checklist', 'pre-repair', 'gather tools'],
+    'post_repair': ['verify', 'test the repair', 'post-repair', 'monitor', 'log the repair'],
+    'when_to_stop': ['call a pro', 'professional help', 'stop immediately', 'don\'t attempt'],
+    'spare_parts': ['spare parts', 'tool kit', 'toolkit', 'what to carry', 'emergency kit'],
+    // Diagnostics sub-topics
+    'decision_tree': ['decision tree', 'diagnostic sequence', 'does the starter', 'is water coming'],
+    'five_senses': ['look', 'listen', 'smell', 'touch', 'taste', 'noise', 'sound', 'vibration'],
+    'root_cause': ['misdiagnos', 'common cause', 'root cause', 'actually', 'most likely'],
+    'interview': ['what changed', 'when did this start', 'consistent or intermittent', 'what makes it worse'],
+    // Hydraulics sub-topics
+    'steering_hydraulic': ['hydraulic steering', 'helm pump', 'steering cylinder', 'ram', 'emergency tiller'],
+    'hydraulic_bleed': ['bleed', 'bleeding procedure', 'spongy steering', 'air bubbles'],
+    'autopilot_hydraulic': ['autopilot drive', 'linear drive', 'rotary drive'],
+    'trim_tabs': ['trim tab', 'trim tabs', 'transom'],
+    'hose_inspection': ['hose inspection', 'bulging', 'wire braid', 'chafe', 'replace hose'],
+    // Corrosion sub-topics
+    'galvanic_corrosion': ['galvanic corrosion', 'dissimilar metals', 'galvanic series', 'noble', 'less noble'],
+    'stray_current': ['stray current', 'electrolysis', 'wiring fault', 'shore power corrosion'],
+    'anodes': ['sacrificial anode', 'zinc anode', 'pencil zinc', 'anode consumption'],
+    'seized_bolts': ['seized bolt', 'stuck bolt', 'penetrating oil', 'bolt extraction', 'ez-out', 'galling'],
+    'fastener_select': ['fastener selection', 'silicon bronze', 'monel', '316 stainless', 'marine fastener'],
+    'bedding_hardware': ['bedding', 'rebed', 'rebedding', 'bolt hole', 'seal the core'],
   };
 
   /// Chunk a markdown document by headings (## and ###)

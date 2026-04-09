@@ -233,6 +233,10 @@ class _KnowledgeBaseScreenState extends State<KnowledgeBaseScreen>
       'seamanship' => Icons.sailing,
       'fiberglass' => Icons.build,
       'rigging' => Icons.settings,
+      'safety' => Icons.health_and_safety,
+      'diagnostics' => Icons.troubleshoot,
+      'hydraulics' => Icons.compress,
+      'corrosion' => Icons.shield,
       'general' => Icons.handyman,
       _ => Icons.folder,
     };

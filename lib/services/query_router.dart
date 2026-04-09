@@ -38,10 +38,14 @@ class QueryRouter {
     // If no specific category matched, include general as fallback
     if (scores.isEmpty) {
       scores['general'] = 1.0;
-      scores['seamanship'] = 0.5;
+      scores['diagnostics'] = 0.5;
     }
 
-    // Always add 'general' as a low-weight supplementary source
+    // Always add safety/diagnostics as low-weight supplementary sources
+    // These cross-cutting skills are relevant to nearly every query
+    scores['safety'] = (scores['safety'] ?? 0) + 0.2;
+    scores['diagnostics'] = (scores['diagnostics'] ?? 0) + 0.2;
+    scores['corrosion'] = (scores['corrosion'] ?? 0) + 0.1;
     scores['general'] = (scores['general'] ?? 0) + 0.3;
 
     // Sort by score descending
@@ -168,16 +172,56 @@ class QueryRouter {
       'fog', 'collision', 'rules of road', 'colregs',
       'weather', 'forecast', 'barometer',
     ],
+    'safety': [
+      'safe', 'safety', 'danger', 'dangerous', 'risk',
+      'lockout', 'tagout', 'isolation', 'isolate',
+      'fire extinguisher', 'extinguisher',
+      'should i', 'is it safe', 'can i',
+      'before i start', 'before repair', 'precaution',
+      'professional', 'call a pro', 'mechanic',
+      'temporary fix', 'temporary repair', 'jury rig',
+      'checklist', 'pre-repair', 'post-repair',
+      'tool kit', 'spare parts', 'what to carry',
+    ],
+    'diagnostics': [
+      'diagnos', 'troubleshoot', 'what\'s wrong',
+      'why is', 'why won\'t', 'why does', 'how to find',
+      'identify', 'figure out', 'determine',
+      'symptom', 'noise', 'sound', 'smell', 'vibration',
+      'intermittent', 'sometimes', 'randomly',
+      'decision tree', 'systematic', 'step by step',
+      'check', 'test', 'measure', 'inspect',
+      'misdiagnos', 'common cause', 'most likely',
+      'multimeter', 'compression test',
+    ],
+    'hydraulics': [
+      'hydraulic', 'steering', 'helm pump', 'steering cylinder',
+      'power steering', 'autopilot drive', 'linear drive',
+      'trim tab', 'trim tabs',
+      'hydraulic fluid', 'atf', 'dexron',
+      'spongy steering', 'hard to turn', 'steering play',
+      'bleed', 'bleeding', 'air in system',
+      'emergency tiller', 'tiller',
+      'windlass', 'bow thruster',
+      'teleflex', 'seastar', 'vetus',
+    ],
+    'corrosion': [
+      'corrosion', 'corrode', 'corroded', 'rust', 'rusty',
+      'galvanic', 'electrolysis', 'stray current',
+      'zinc', 'anode', 'sacrificial', 'dezincification',
+      'dissimilar metal', 'galvanic series',
+      'seized', 'stuck bolt', 'frozen bolt', 'won\'t come out',
+      'fastener', 'bolt', 'nut', 'screw',
+      'stainless', 'bronze', 'monel', 'brass',
+      'galling', 'anti-seize', 'tefgel', 'penetrating oil',
+      'bedding', 'rebed', 'rebedding', 'deck hardware',
+      'bonding', 'bonding system', 'bonding wire',
+    ],
     'general': [
       'tool', 'wrench', 'screwdriver', 'pliers', 'hammer',
       'drill', 'saw', 'file', 'sandpaper', 'tape',
-      'stainless', 'bronze', 'aluminum', 'steel', 'plastic',
-      'fastener', 'bolt', 'nut', 'screw', 'washer',
-      'thread', 'tap', 'die', 'lubrication', 'grease',
-      'wd-40', 'penetrating oil', 'lanolin', 'tefgel',
-      'corrosion', 'rust', 'galvanic', 'dissimilar metals',
-      'maintenance', 'inspection', 'checklist', 'schedule',
-      'spare parts', 'toolkit', 'what to carry',
+      'lubrication', 'grease', 'wd-40', 'lanolin',
+      'maintenance', 'inspection', 'schedule',
       'marine grade', 'above waterline', 'below waterline',
     ],
   };
@@ -214,6 +258,23 @@ class QueryRouter {
     'gelcoat': ['gelcoat', 'gel coat', 'scratch', 'chip', 'crazing'],
     'structural': ['delamination', 'core rot', 'blister', 'osmotic', 'keel', 'rudder'],
     'bottom': ['antifouling', 'bottom paint', 'barrier coat', 'haul out'],
+    // Safety sub-topics
+    'isolation': ['lockout', 'tagout', 'isolate', 'disconnect', 'shut off'],
+    'risk_assess': ['safe', 'danger', 'risk', 'should i', 'is it safe', 'precaution'],
+    'when_to_stop': ['call a pro', 'professional', 'stop', 'don\'t attempt'],
+    // Diagnostics sub-topics
+    'decision_tree': ['diagnos', 'troubleshoot', 'decision tree', 'systematic'],
+    'senses': ['noise', 'sound', 'smell', 'vibration', 'look', 'feel'],
+    'root_cause': ['why', 'cause', 'root cause', 'misdiagnos'],
+    // Hydraulics sub-topics
+    'steering_hydraulic': ['hydraulic steering', 'helm pump', 'steering cylinder', 'spongy', 'emergency tiller'],
+    'hydraulic_bleed': ['bleed', 'bleeding', 'air in', 'spongy steering'],
+    'trim': ['trim tab', 'trim tabs'],
+    // Corrosion sub-topics
+    'galvanic': ['galvanic', 'dissimilar metal', 'galvanic series', 'electrolysis', 'stray current'],
+    'anodes': ['zinc', 'anode', 'sacrificial', 'pencil zinc'],
+    'seized_bolts': ['seized', 'stuck bolt', 'frozen bolt', 'extraction', 'penetrating oil', 'galling'],
+    'bedding': ['bedding', 'rebed', 'deck hardware', 'bolt hole', 'core rot'],
   };
 
   /// Maps tags to their parent category
@@ -228,6 +289,10 @@ class QueryRouter {
     'knots_lines': 'seamanship', 'emergencies': 'seamanship', 'anchoring': 'seamanship',
     'weather_heavy': 'seamanship', 'first_aid': 'seamanship',
     'gelcoat': 'fiberglass', 'structural': 'fiberglass', 'bottom': 'fiberglass',
+    'isolation': 'safety', 'risk_assess': 'safety', 'when_to_stop': 'safety',
+    'decision_tree': 'diagnostics', 'senses': 'diagnostics', 'root_cause': 'diagnostics',
+    'steering_hydraulic': 'hydraulics', 'hydraulic_bleed': 'hydraulics', 'trim': 'hydraulics',
+    'galvanic': 'corrosion', 'anodes': 'corrosion', 'seized_bolts': 'corrosion', 'bedding': 'corrosion',
   };
 
   /// Get the parent category for a tag

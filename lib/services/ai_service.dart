@@ -240,6 +240,10 @@ class AiService {
     'seamanship': 'Seamanship & Emergency',
     'fiberglass': 'Hull & Fiberglass',
     'rigging': 'Rigging & Sails',
+    'safety': 'Safety & Triage',
+    'diagnostics': 'Diagnostics',
+    'hydraulics': 'Hydraulics & Steering',
+    'corrosion': 'Corrosion & Fasteners',
     'general': 'General Maintenance',
   };
 }
