@@ -1,47 +1,58 @@
-%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#fff', 'primaryTextColor': '#333', 'primaryBorderColor': '#ccc', 'lineColor': '#999', 'secondaryColor': '#fafafa', 'tertiaryColor': '#fafafa', 'fontSize': '18px', 'fontFamily': 'Segoe UI, Helvetica, sans-serif', 'clusterBkg': '#fafafa', 'clusterBorder': '#ddd' } } }%%
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#fff', 'primaryTextColor': '#333', 'primaryBorderColor': '#ccc', 'lineColor': '#aaa', 'secondaryColor': '#fafafa', 'tertiaryColor': '#fafafa', 'fontSize': '14px', 'fontFamily': 'Segoe UI, Helvetica, sans-serif', 'clusterBkg': '#fafafa', 'clusterBorder': '#ddd' } } }%%
 
-graph LR
+block-beta
+    columns 13
 
-    subgraph left [" App Layer "]
-        direction TB
-        Flutter["<b style='font-size:20px'>Flutter</b><br/>Cross-platform UI"]
-        Provider["<b style='font-size:20px'>Provider</b><br/>State management"]
-        Theme["<b style='font-size:20px'>Boatman Theme</b><br/>Maritime UX"]
+    space:13
+
+    block:client["App Layer"]:3
+        Flutter["<b>Flutter</b>\nCross-platform UI"]
+        Provider["<b>Provider</b>\nState mgmt"]
+        Theme["<b>Boatman Theme</b>\nMaritime UX"]
+    end
+    space
+    block:screens["Screens"]:4
+        Chat["<b>Chat</b>\nAI assistant"]
+        BoatProfile["<b>Boat Profile</b>\nVessel config"]
+        Knowledge["<b>Knowledge</b>\nSkill packs"]
+        Settings["<b>Settings</b>\nMode · theme"]
+    end
+    space
+    block:services["Core Services"]:4
+        AiService["<b>AI Service</b>\nRAG pipeline"]
+        QueryRouter["<b>Query Router</b>\n12 categories"]
+        PhotoService["<b>Photo Service</b>\nCapture · analyze"]
+        ImportService["<b>Manual Import</b>\nPDF · TXT · MD"]
     end
 
-    subgraph middle [" Screens & Services "]
-        direction TB
-        Chat["<b style='font-size:20px'>Chat</b><br/>AI assistant"]
-        BoatProfile["<b style='font-size:20px'>Boat Profile</b><br/>Vessel config"]
-        AiService["<b style='font-size:20px'>AI Service</b><br/>RAG pipeline"]
-        QueryRouter["<b style='font-size:20px'>Query Router</b><br/>12 categories"]
-        PhotoService["<b style='font-size:20px'>Photo Service</b><br/>Capture · analyze"]
-        ImportService["<b style='font-size:20px'>Manual Import</b><br/>PDF · TXT · MD"]
+    space:13
+
+    block:storage["On-Device Storage"]:2
+        SQLite["<b>SQLite</b>\nboats · chats · chunks"]
+        LocalFiles["<b>Local Files</b>\nphotos · manuals"]
     end
-
-    subgraph right1 [" On-Device Data "]
-        direction TB
-        SQLite["<b style='font-size:20px'>SQLite</b><br/>boats · chats · chunks"]
-        LocalFiles["<b style='font-size:20px'>Local Files</b><br/>photos · manuals"]
-        P1["<b style='font-size:20px'>Diesel · Electrical</b>"]
-        P2["<b style='font-size:20px'>Plumbing · Rigging</b>"]
-        P3["<b style='font-size:20px'>Safety · Seamanship</b>"]
-        P4["<b style='font-size:20px'>Fiberglass · Hydraulics</b>"]
-        P5["<b style='font-size:20px'>Diagnostics · Corrosion</b>"]
+    space
+    block:packs["10 Skill Packs"]:5
+        P1["<b>Diesel\nElectrical</b>"]
+        P2["<b>Plumbing\nRigging</b>"]
+        P3["<b>Safety\nSeamanship</b>"]
+        P4["<b>Fiberglass\nHydraulics</b>"]
+        P5["<b>Diagnostics\nCorrosion</b>"]
     end
-
-    subgraph right2 [" Shore Mode "]
-        direction TB
-        WebSearch["<b style='font-size:20px'>DuckDuckGo</b><br/>Manual search"]
-        Downloads["<b style='font-size:20px'>Web Downloads</b><br/>PDF · HTML"]
-        NobodyWho["<b style='font-size:20px'>NobodyWho LLM</b><br/>on-device inference<br/><i style='color:#999'>planned</i>"]
+    space
+    block:external["Shore Mode Only"]:3
+        WebSearch["<b>DuckDuckGo</b>\nManual search"]
+        Downloads["<b>Web Downloads</b>\nPDF · HTML"]
+        NobodyWho["<b>NobodyWho LLM</b>\non-device inference\n(planned)"]
     end
+    space
 
-    left -- "navigate" --> middle
-    middle -- "read / write" --> right1
-    middle -. "online only" .-> right2
+    client --> screens
+    screens --> services
+    services --> storage
+    services --> packs
+    services -.-> external
 
-    %% ── Styles ──
     classDef blue fill:#e8eaf6,stroke:#7986cb,stroke-width:1.5px,color:#283593
     classDef green fill:#e8f5e9,stroke:#81c784,stroke-width:1.5px,color:#2e7d32
     classDef orange fill:#fff3e0,stroke:#ffb74d,stroke-width:1.5px,color:#e65100
@@ -50,12 +61,8 @@ graph LR
     classDef coral fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#c62828
 
     class Flutter,Provider,Theme blue
-    class Chat,BoatProfile green
+    class Chat,BoatProfile,Knowledge,Settings green
     class AiService,QueryRouter,PhotoService,ImportService orange
     class SQLite,LocalFiles purple
     class P1,P2,P3,P4,P5 teal
     class WebSearch,Downloads,NobodyWho coral
-
-    linkStyle 0 stroke:#999,stroke-width:1.5px
-    linkStyle 1 stroke:#999,stroke-width:1.5px
-    linkStyle 2 stroke:#bbb,stroke-width:1.5px,stroke-dasharray:5
