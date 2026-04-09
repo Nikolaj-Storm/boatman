@@ -1,0 +1,42 @@
+name: boatman
+description: "Offline AI handyman for sailors"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # NobodyWho will be added when using Flutter SDK >=3.41.6 (Dart >=3.8)
+  # nobodywho: ^0.5.2
+  # Local database
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  # State management
+  provider: ^6.1.2
+  # File handling
+  file_picker: ^8.1.6
+  path_provider: ^2.1.4
+  # HTTP for shore mode fetching
+  http: ^1.2.2
+  # Markdown rendering for skill packs
+  flutter_markdown: ^0.7.4
+  # Shared preferences for settings
+  shared_preferences: ^2.3.4
+  # UUID generation
+  uuid: ^4.5.1
+  # URL launcher
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/skill_packs/

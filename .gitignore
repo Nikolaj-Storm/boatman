@@ -1,24 +1,51 @@
-# Flutter
-*.dart_tool/
-*.flutter-plugins
-*.flutter-plugins-dependencies
-.packages
-build/
-.dart_tool/
-
-# IDE
-.idea/
-.vscode/
-*.iml
+# Miscellaneous
+*.class
+*.log
+*.pyc
 *.swp
-
-# OS
 .DS_Store
-Thumbs.db
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
 
-# Models (too large for git)
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# GGUF model files (too large for git)
 *.gguf
 
-# Environment
-.env
-.env.local
+# Pubspec lock can be committed for apps
+# pubspec.lock
