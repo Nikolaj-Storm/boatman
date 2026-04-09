@@ -1,0 +1,57 @@
+%% Boatman — System Overview (presentation slide)
+%% Simplified layout: left-to-right, single-slide friendly
+
+graph LR
+    User(["User"])
+
+    subgraph UI["Flutter UI"]
+        direction TB
+        Chat["Chat"]
+        BoatProfile["Boat Profile"]
+        Knowledge["Knowledge Base"]
+        Settings["Settings"]
+    end
+
+    subgraph Core["Core Services"]
+        direction TB
+        AI["AI Service\n(RAG Pipeline)"]
+        Router["Query Router"]
+        Photo["Photo Service"]
+        Import["Manual Import"]
+    end
+
+    subgraph Data["On-Device Storage"]
+        direction TB
+        SQLite[("SQLite DB\nboats · chats\nknowledge chunks")]
+        Files[("Local Files\nphotos · manuals")]
+    end
+
+    subgraph Assets["Knowledge Packs"]
+        direction TB
+        Packs["10 Skill Packs\ndiesel · electrical\nplumbing · rigging\nseamanship · safety\nfiberglass · diagnostics\nhydraulics · corrosion"]
+    end
+
+    subgraph Ext["External\n(Shore Mode Only)"]
+        direction TB
+        Web["Web Search\n& Downloads"]
+        LLM["NobodyWho LLM\n(planned)"]
+    end
+
+    User --> UI
+    UI --> Core
+    Core --> Data
+    Core --> Assets
+    Core -.-> Ext
+
+    %% Styling
+    classDef ui fill:#1a5276,stroke:#2980b9,color:#fff,font-size:14px
+    classDef core fill:#1e8449,stroke:#27ae60,color:#fff,font-size:14px
+    classDef data fill:#7d3c98,stroke:#9b59b6,color:#fff,font-size:14px
+    classDef asset fill:#1b4f72,stroke:#2e86c1,color:#fff,font-size:14px
+    classDef ext fill:#b9770e,stroke:#f39c12,color:#fff,font-size:14px
+
+    class Chat,BoatProfile,Knowledge,Settings ui
+    class AI,Router,Photo,Import core
+    class SQLite,Files data
+    class Packs asset
+    class Web,LLM ext
