@@ -33,8 +33,11 @@ An offline-capable mobile app that acts as an on-board technical advisor for sai
 - **GPU acceleration**: Vulkan (Android), Metal (iOS/macOS)
 - **Key features**: Text generation, embeddings, RAG, tool calling, conversation-aware context shifting
 - **Integrations**: Flutter (pub package), Python, Godot
-- **Platforms**: Android (stable), iOS (in development, marked "very feasible")
+- **Platforms**: Android (stable), iOS (supported via Flutter — iPhone 11+ with 4GB+ RAM)
+- **Language**: Written in Rust, wraps llama.cpp
 - **Recommended models**: Qwen3 4B (capable) or Qwen3 0.6B (fast/lightweight)
+- **Mobile RAM rule**: Device needs ~2x the model file size in available RAM
+- **No CUDA** — Vulkan and Metal only (fine for mobile)
 
 ### App Framework: Flutter
 - **Why Flutter**:
@@ -292,7 +295,7 @@ User: "My engine is overheating and I see steam from the heat exchanger"
 ## MVP Scope (v0.1)
 
 ### In Scope
-- [ ] Flutter app (Android first, iOS when NobodyWho supports it)
+- [ ] Flutter app (Android + iOS — both supported by NobodyWho Flutter package)
 - [ ] Boat profile setup (vessel, engine, key equipment)
 - [ ] Pre-loaded skill packs (start with 2-3: diesel engine, electrical, plumbing)
 - [ ] On-device LLM chat interface (NobodyWho + Qwen3)
@@ -302,7 +305,6 @@ User: "My engine is overheating and I see steam from the heat exchanger"
 
 ### Out of Scope for MVP
 - [ ] Automated web fetching of manuals (manual PDF import instead)
-- [ ] iOS support (pending NobodyWho iOS release)
 - [ ] Image recognition (photo of broken part → diagnosis)
 - [ ] Community knowledge sharing
 - [ ] Maintenance scheduling / reminders
@@ -318,7 +320,7 @@ User: "My engine is overheating and I see steam from the heat exchanger"
 - 2-3 pre-loaded skill packs
 - On-device LLM chat with RAG over skill packs
 - Manual PDF import + indexing
-- Android only
+- Android + iOS (both supported via NobodyWho Flutter)
 
 ### v0.2 - "Shore Prep"
 - Automated manual fetching by equipment make/model
@@ -328,7 +330,6 @@ User: "My engine is overheating and I see steam from the heat exchanger"
 - Search/browse indexed documents
 
 ### v0.3 - "Sea Ready"
-- iOS support
 - Maintenance log / journal
 - Offline parts cross-reference database
 - Conversation history with bookmarking
@@ -357,9 +358,9 @@ User: "My engine is overheating and I see steam from the heat exchanger"
 - **Risk**: Small models (0.6B-4B) may give inaccurate technical advice
 - **Mitigation**: Heavy RAG reliance (model retrieves, not invents); skill packs are curated by marine professionals; add confidence indicators; always include "consult a professional" disclaimers for safety-critical repairs
 
-### 2. iOS Support Timeline
-- **Risk**: NobodyWho iOS support is "in development" — not yet stable
-- **Mitigation**: Start with Android; Flutter codebase ports easily; monitor NobodyWho iOS progress; evaluate alternatives (llama.cpp direct, MLX for iOS) as fallback
+### 2. iOS Constraints
+- **Risk**: iOS is supported but iPhone 11+ required (4GB+ RAM); older iPhones may be too slow
+- **Mitigation**: Clear minimum device requirements in App Store listing; graceful fallback for low-RAM devices (smaller model auto-selection)
 
 ### 3. Storage on Mobile Devices
 - **Risk**: ~2GB base + user content may be significant on budget phones
@@ -430,12 +431,33 @@ User: "My engine is overheating and I see steam from the heat exchanger"
 
 ---
 
+## Minimum Device Requirements
+
+| Platform | Minimum Device | RAM | GPU | Notes |
+|----------|---------------|-----|-----|-------|
+| Android | Snapdragon 855+ (2019+) | 6 GB+ | Adreno 640+ (Vulkan) | Most mid-range phones from 2020+ |
+| iOS | iPhone 11+ (A13 Bionic) | 4 GB+ | Metal | ~1-2 GB iOS overhead reduces available RAM |
+
+**RAM rule of thumb**: Available RAM must be ~2x the GGUF model file size.
+
+---
+
+## Key Resources
+
+- [NobodyWho GitHub](https://github.com/nobodywho-ooo/nobodywho)
+- [NobodyWho Docs](https://docs.nobodywho.ooo/)
+- [NobodyWho Flutter Package (pub.dev)](https://pub.dev/packages/nobodywho)
+- [Flutter Starter Example](https://github.com/nobodywho-ooo/flutter-starter-example)
+- [NobodyWho Python Package (PyPI)](https://pypi.org/project/nobodywho/)
+
+---
+
 ## Next Steps
 
-1. Set up Flutter project with NobodyWho integration
+1. Set up Flutter project with NobodyWho integration (reference their flutter-starter-example)
 2. Build minimal boat profiling UI
 3. Create first skill pack (Marine Diesel Engine Fundamentals)
 4. Implement basic RAG pipeline with NobodyWho embeddings
 5. Build chat interface
-6. Test on Android device with Qwen3 1.7B
+6. Test on Android + iOS devices with Qwen3 1.7B
 7. Iterate on RAG quality with real marine scenarios
