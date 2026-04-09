@@ -1,16 +1,16 @@
 %%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#fff', 'primaryTextColor': '#333', 'primaryBorderColor': '#ccc', 'lineColor': '#999', 'secondaryColor': '#fafafa', 'tertiaryColor': '#fafafa', 'fontSize': '18px', 'fontFamily': 'Segoe UI, Helvetica, sans-serif', 'clusterBkg': '#fafafa', 'clusterBorder': '#ddd' } } }%%
 
-graph LR
+graph TB
 
     subgraph client [" Mobile App "]
-        direction TB
+        direction LR
         Flutter["<b style='font-size:20px'>Flutter</b><br/>Cross-platform UI"]
         Provider["<b style='font-size:20px'>Provider</b><br/>State management"]
         Theme["<b style='font-size:20px'>Boatman Theme</b><br/>Maritime UX"]
     end
 
     subgraph screens [" Screens "]
-        direction TB
+        direction LR
         Chat["<b style='font-size:20px'>Chat</b><br/>AI assistant"]
         BoatProfile["<b style='font-size:20px'>Boat Profile</b><br/>Vessel config"]
         Knowledge["<b style='font-size:20px'>Knowledge</b><br/>Skill packs"]
@@ -18,21 +18,24 @@ graph LR
     end
 
     subgraph services [" Core Services "]
-        direction TB
+        direction LR
         AiService["<b style='font-size:20px'>AI Service</b><br/>RAG pipeline"]
         QueryRouter["<b style='font-size:20px'>Query Router</b><br/>12 categories"]
         PhotoService["<b style='font-size:20px'>Photo Service</b><br/>Capture · analyze"]
         ImportService["<b style='font-size:20px'>Manual Import</b><br/>PDF · TXT · MD"]
     end
 
+    client -- "navigate" --> screens
+    screens -- "user request" --> services
+
     subgraph storage [" On-Device Storage "]
-        direction TB
+        direction LR
         SQLite["<b style='font-size:20px'>SQLite</b><br/>boats · chats · chunks"]
         LocalFiles["<b style='font-size:20px'>Local Files</b><br/>photos · manuals"]
     end
 
     subgraph packs [" 10 Skill Packs "]
-        direction TB
+        direction LR
         P1["<b style='font-size:20px'>Diesel · Electrical</b><br/>engines · wiring · solar"]
         P2["<b style='font-size:20px'>Plumbing · Rigging</b><br/>water · sails · deck"]
         P3["<b style='font-size:20px'>Safety · Seamanship</b><br/>triage · emergency"]
@@ -41,17 +44,12 @@ graph LR
     end
 
     subgraph external [" Shore Mode Only "]
-        direction TB
+        direction LR
         WebSearch["<b style='font-size:20px'>DuckDuckGo</b><br/>Manual search"]
         Downloads["<b style='font-size:20px'>Web Downloads</b><br/>PDF · HTML"]
-        NobodyWho["<b style='font-size:20px'>NobodyWho LLM</b><br/>on-device inference"]
+        NobodyWho["<b style='font-size:20px'>NobodyWho LLM</b><br/>on-device inference<br/><i style='color:#999'>planned</i>"]
     end
 
-    NobodyWhoNote["<i>not yet active</i>"]
-    NobodyWho -.- NobodyWhoNote
-
-    client -- "navigate" --> screens
-    screens -- "user request" --> services
     services -- "read / write" --> storage
     services -- "retrieve chunks" --> packs
     services -. "online only" .-> external
@@ -63,7 +61,6 @@ graph LR
     classDef purple fill:#f3e5f5,stroke:#ba68c8,stroke-width:1.5px,color:#6a1b9a
     classDef teal fill:#e0f2f1,stroke:#4db6ac,stroke-width:1.5px,color:#00695c
     classDef coral fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#c62828
-    classDef gray fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1px,color:#9e9e9e,stroke-dasharray:4
 
     class Flutter,Provider,Theme blue
     class Chat,BoatProfile,Knowledge,Settings green
@@ -71,11 +68,9 @@ graph LR
     class SQLite,LocalFiles purple
     class P1,P2,P3,P4,P5 teal
     class WebSearch,Downloads,NobodyWho coral
-    class NobodyWhoNote gray
 
     linkStyle 0 stroke:#999,stroke-width:1.5px
     linkStyle 1 stroke:#999,stroke-width:1.5px
     linkStyle 2 stroke:#999,stroke-width:1.5px
     linkStyle 3 stroke:#999,stroke-width:1.5px
     linkStyle 4 stroke:#bbb,stroke-width:1.5px,stroke-dasharray:5
-    linkStyle 5 stroke:#bbb,stroke-width:1px,stroke-dasharray:4
