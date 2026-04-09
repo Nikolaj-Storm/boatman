@@ -5,6 +5,7 @@ import 'package:boatman/screens/chat_screen.dart';
 import 'package:boatman/screens/boat_profile_screen.dart';
 import 'package:boatman/screens/knowledge_base_screen.dart';
 import 'package:boatman/screens/settings_screen.dart';
+import 'package:boatman/screens/onboarding_screen.dart';
 import 'package:boatman/theme/boatman_theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -30,6 +31,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // Restart button (top-left, for testing)
+        leading: IconButton(
+          icon: const Icon(Icons.restart_alt, size: 22),
+          tooltip: 'Restart onboarding (testing)',
+          onPressed: () => _confirmRestart(context, appState),
+        ),
         title: Row(
           children: [
             const Icon(Icons.sailing, size: 28),
@@ -48,7 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-        // Large touch targets for at-sea use
         height: 72,
         destinations: const [
           NavigationDestination(
@@ -73,6 +79,43 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _confirmRestart(BuildContext context, AppState appState) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restart Setup?'),
+        content: const Text(
+          'This will reset the app and take you back to the onboarding screen. '
+          'Your data (manuals, skill packs) will be preserved, but you\'ll '
+          're-enter your boat details.\n\n'
+          'This is a testing feature.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _doRestart(appState);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Restart'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _doRestart(AppState appState) {
+    appState.resetOnboarding();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      (_) => false,
     );
   }
 

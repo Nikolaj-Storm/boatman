@@ -61,6 +61,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void resetOnboarding() {
+    _hasCompletedOnboarding = false;
+    _activeBoat = null;
+    _isModelLoaded = false;
+    notifyListeners();
+  }
+
   Future<void> addBoat(BoatProfile boat) async {
     await _db.saveBoatProfile(boat);
     _boats.add(boat);

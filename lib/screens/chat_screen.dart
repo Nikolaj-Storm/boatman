@@ -8,6 +8,7 @@ import 'package:boatman/models/chat_message.dart';
 import 'package:boatman/services/ai_service.dart';
 import 'package:boatman/services/database_service.dart';
 import 'package:boatman/services/photo_service.dart';
+import 'package:boatman/screens/chunk_context_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -412,6 +413,113 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Build assistant message content, parsing [REF:sourceId:chunkIndex:label] into tappable links
+  Widget _buildAssistantContent(String content) {
+    // Split content by REF links
+    final refPattern = RegExp(r'\[REF:([^:]+):(\d+):([^\]]+)\]');
+    final parts = <Widget>[];
+    int lastEnd = 0;
+
+    for (final match in refPattern.allMatches(content)) {
+      // Add markdown content before this link
+      if (match.start > lastEnd) {
+        final textBefore = content.substring(lastEnd, match.start);
+        if (textBefore.trim().isNotEmpty) {
+          parts.add(MarkdownBody(
+            data: textBefore,
+            styleSheet: MarkdownStyleSheet(
+              p: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ));
+        }
+      }
+
+      // Add the tappable reference link
+      final sourceId = match.group(1)!;
+      final chunkIndex = int.parse(match.group(2)!);
+      final label = match.group(3)!;
+
+      parts.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: InkWell(
+            onTap: () => _openChunkContext(sourceId, chunkIndex),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.menu_book, size: 16,
+                      color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      lastEnd = match.end;
+    }
+
+    // Add remaining content after the last link
+    if (lastEnd < content.length) {
+      final remaining = content.substring(lastEnd);
+      if (remaining.trim().isNotEmpty) {
+        parts.add(MarkdownBody(
+          data: remaining,
+          styleSheet: MarkdownStyleSheet(
+            p: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ));
+      }
+    }
+
+    // If no REF links found, just render as markdown
+    if (parts.isEmpty) {
+      return MarkdownBody(
+        data: content,
+        styleSheet: MarkdownStyleSheet(
+          p: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: parts,
+    );
+  }
+
+  void _openChunkContext(String sourceId, int chunkIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChunkContextScreen(
+          sourceId: sourceId,
+          focusChunkIndex: chunkIndex,
+        ),
+      ),
+    );
+  }
+
   Widget _buildSuggestionChip(String text, IconData icon) {
     return ActionChip(
       avatar: Icon(icon, size: 16),
@@ -487,12 +595,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                     )
                   else ...[
-                    MarkdownBody(
-                      data: message.content,
-                      styleSheet: MarkdownStyleSheet(
-                        p: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
+                    _buildAssistantContent(message.content),
                     if (isStreaming)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),

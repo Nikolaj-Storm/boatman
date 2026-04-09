@@ -203,49 +203,36 @@ class AiService {
       final buffer = StringBuffer();
       buffer.write(boatCtx);
 
-      // Show routing info
-      final catSummary = categories
-          .where((c) => c.weight > 0.5)
-          .map((c) => _categoryLabels[c.category] ?? c.category)
-          .take(3)
-          .join(', ');
-      buffer.writeln('**Domain:** $catSummary\n');
-
-      // Show the most relevant chunks as the "answer"
+      // Show the most relevant chunks as the answer with full content
       final topChunks = rankedChunks.take(3).toList();
       for (int i = 0; i < topChunks.length; i++) {
         final rc = topChunks[i];
-        final relevance = rc.score > 8
-            ? 'highly relevant'
-            : rc.score > 4
-                ? 'relevant'
-                : 'supplementary';
-        buffer.writeln('### ${rc.chunk.title}');
-        if (rc.chunk.tags.isNotEmpty) {
-          buffer.writeln('_Tags: ${rc.chunk.tags} | Relevance: $relevance (${rc.score.toStringAsFixed(1)})_\n');
-        }
+        final chunk = rc.chunk;
 
-        // Show a useful portion of the chunk content
-        final content = rc.chunk.content;
-        final maxLen = i == 0 ? 800 : 400; // More from the top result
-        if (content.length > maxLen) {
-          // Try to break at a paragraph boundary
-          final cutoff = content.indexOf('\n\n', maxLen ~/ 2);
-          buffer.writeln(content.substring(0, cutoff > 0 ? cutoff : maxLen));
-          buffer.writeln('\n_...continued in knowledge base_\n');
-        } else {
-          buffer.writeln(content);
-          buffer.writeln();
-        }
+        // Section header with source reference link
+        buffer.writeln('### ${chunk.title}');
+        buffer.writeln('_From: ${chunk.sourceId.replaceAll("_", " ")} · ${chunk.category}_\n');
+
+        // Full chunk content — no truncation
+        buffer.writeln(chunk.content);
+        buffer.writeln();
+
+        // Clickable reference link to view this section in context
+        // Format: [REF:sourceId:chunkIndex:label] — parsed by chat screen
+        buffer.writeln('[REF:${chunk.sourceId}:${chunk.chunkIndex}:Read full section in context →]\n');
       }
 
+      // Additional references
       if (rankedChunks.length > 3) {
         buffer.writeln('---');
-        buffer.writeln('_${rankedChunks.length - 3} additional relevant sections found. '
-            'Check the **Knowledge** tab for full details._');
+        buffer.writeln('**Related sections:**\n');
+        for (final rc in rankedChunks.skip(3).take(5)) {
+          buffer.writeln('- [REF:${rc.chunk.sourceId}:${rc.chunk.chunkIndex}:${rc.chunk.title}] _(${rc.chunk.sourceId.replaceAll("_", " ")})_');
+        }
+        buffer.writeln();
       }
 
-      buffer.writeln('\n_[Mock mode — routing & retrieval active, install GGUF model for AI-synthesized answers]_');
+      buffer.writeln('_[Mock mode — routing & retrieval active, install GGUF model for AI-synthesized answers]_');
       return buffer.toString();
     }
 
