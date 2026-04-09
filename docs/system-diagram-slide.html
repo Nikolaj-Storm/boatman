@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Boatman — System Diagram</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Helvetica, sans-serif;
+    }
+    #diagram {
+      width: 95vw;
+      max-width: 1600px;
+      padding: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="diagram">
+    <pre class="mermaid">
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#fff', 'primaryTextColor': '#333', 'primaryBorderColor': '#ccc', 'lineColor': '#999', 'secondaryColor': '#fafafa', 'tertiaryColor': '#fafafa', 'fontSize': '18px', 'fontFamily': 'Segoe UI, Helvetica, sans-serif', 'clusterBkg': '#fafafa', 'clusterBorder': '#ddd' } } }%%
+
+graph LR
+
+    subgraph left [" App Layer "]
+        direction TB
+        Flutter["&lt;b style='font-size:20px'&gt;Flutter&lt;/b&gt;&lt;br/&gt;Cross-platform UI"]
+        Provider["&lt;b style='font-size:20px'&gt;Provider&lt;/b&gt;&lt;br/&gt;State management"]
+        Theme["&lt;b style='font-size:20px'&gt;Boatman Theme&lt;/b&gt;&lt;br/&gt;Maritime UX"]
+    end
+
+    subgraph middle [" Screens &amp; Services "]
+        direction TB
+        Chat["&lt;b style='font-size:20px'&gt;Chat&lt;/b&gt;&lt;br/&gt;AI assistant"]
+        BoatProfile["&lt;b style='font-size:20px'&gt;Boat Profile&lt;/b&gt;&lt;br/&gt;Vessel config"]
+        AiService["&lt;b style='font-size:20px'&gt;AI Service&lt;/b&gt;&lt;br/&gt;RAG pipeline"]
+        QueryRouter["&lt;b style='font-size:20px'&gt;Query Router&lt;/b&gt;&lt;br/&gt;12 categories"]
+        PhotoService["&lt;b style='font-size:20px'&gt;Photo Service&lt;/b&gt;&lt;br/&gt;Capture · analyze"]
+        ImportService["&lt;b style='font-size:20px'&gt;Manual Import&lt;/b&gt;&lt;br/&gt;PDF · TXT · MD"]
+    end
+
+    subgraph right1 [" On-Device Data "]
+        direction TB
+        SQLite["&lt;b style='font-size:20px'&gt;SQLite&lt;/b&gt;&lt;br/&gt;boats · chats · chunks"]
+        LocalFiles["&lt;b style='font-size:20px'&gt;Local Files&lt;/b&gt;&lt;br/&gt;photos · manuals"]
+        P1["&lt;b style='font-size:20px'&gt;Diesel · Electrical&lt;/b&gt;"]
+        P2["&lt;b style='font-size:20px'&gt;Plumbing · Rigging&lt;/b&gt;"]
+        P3["&lt;b style='font-size:20px'&gt;Safety · Seamanship&lt;/b&gt;"]
+        P4["&lt;b style='font-size:20px'&gt;Fiberglass · Hydraulics&lt;/b&gt;"]
+        P5["&lt;b style='font-size:20px'&gt;Diagnostics · Corrosion&lt;/b&gt;"]
+    end
+
+    subgraph right2 [" Shore Mode "]
+        direction TB
+        WebSearch["&lt;b style='font-size:20px'&gt;DuckDuckGo&lt;/b&gt;&lt;br/&gt;Manual search"]
+        Downloads["&lt;b style='font-size:20px'&gt;Web Downloads&lt;/b&gt;&lt;br/&gt;PDF · HTML"]
+        NobodyWho["&lt;b style='font-size:20px'&gt;NobodyWho LLM&lt;/b&gt;&lt;br/&gt;on-device inference&lt;br/&gt;&lt;i style='color:#999'&gt;planned&lt;/i&gt;"]
+    end
+
+    left -- "navigate" --> middle
+    middle -- "read / write" --> right1
+    middle -. "online only" .-> right2
+
+    classDef blue fill:#e8eaf6,stroke:#7986cb,stroke-width:1.5px,color:#283593
+    classDef green fill:#e8f5e9,stroke:#81c784,stroke-width:1.5px,color:#2e7d32
+    classDef orange fill:#fff3e0,stroke:#ffb74d,stroke-width:1.5px,color:#e65100
+    classDef purple fill:#f3e5f5,stroke:#ba68c8,stroke-width:1.5px,color:#6a1b9a
+    classDef teal fill:#e0f2f1,stroke:#4db6ac,stroke-width:1.5px,color:#00695c
+    classDef coral fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#c62828
+
+    class Flutter,Provider,Theme blue
+    class Chat,BoatProfile green
+    class AiService,QueryRouter,PhotoService,ImportService orange
+    class SQLite,LocalFiles purple
+    class P1,P2,P3,P4,P5 teal
+    class WebSearch,Downloads,NobodyWho coral
+
+    linkStyle 0 stroke:#999,stroke-width:1.5px
+    linkStyle 1 stroke:#999,stroke-width:1.5px
+    linkStyle 2 stroke:#bbb,stroke-width:1.5px,stroke-dasharray:5
+    </pre>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#fff',
+        primaryTextColor: '#333',
+        primaryBorderColor: '#ccc',
+        lineColor: '#999',
+        secondaryColor: '#fafafa',
+        tertiaryColor: '#fafafa',
+        fontSize: '18px',
+        fontFamily: 'Segoe UI, Helvetica, sans-serif',
+        clusterBkg: '#fafafa',
+        clusterBorder: '#ddd'
+      }
+    });
+  </script>
+</body>
+</html>
