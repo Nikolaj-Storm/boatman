@@ -1,67 +1,121 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:nobodywho/nobodywho.dart' as nw;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:boatman/models/boat_profile.dart';
 import 'package:boatman/models/knowledge_chunk.dart';
 import 'package:boatman/services/database_service.dart';
 import 'package:boatman/services/query_router.dart';
 
-/// AI service wrapping NobodyWho for on-device inference.
+/// AI service using NobodyWho for on-device LLM inference.
 ///
-/// Uses QueryRouter to classify queries and route them to the right
-/// knowledge categories before retrieval. In mock mode, generates
-/// realistic responses from the retrieved chunks.
+/// Supports:
+/// - Chat with a GGUF language model (Qwen3, etc.)
+/// - RAG via CrossEncoder reranking of knowledge chunks
+/// - Vision via multimodal models (Qwen3-VL + mmproj)
+/// - Tool calling for structured operations
+/// - Falls back to mock mode if no model is loaded
 class AiService {
   bool _isInitialized = false;
-  bool _useMock = true;
+  bool _useMock = false;
   final QueryRouter _router = QueryRouter();
 
-  bool get isInitialized => _isInitialized;
+  nw.Model? _chatModel;
+  nw.Chat? _chat;
+  nw.CrossEncoder? _crossEncoder;
+  String? _chatModelPath;
 
-  /// Initialize the AI engine with a GGUF model file
-  Future<void> initialize({
-    required String modelPath,
-    Function(double)? onProgress,
-  }) async {
-    // TODO: Initialize NobodyWho when model is available
-    // await NobodyWho.init();
-    // _model = await Model.load(modelPath: modelPath);
-    // _chat = Chat(model: _model, systemPrompt: _systemPrompt);
-    _useMock = true;
-    _isInitialized = true;
+  bool get isInitialized => _isInitialized;
+  bool get hasModel => _chatModel != null;
+  bool get hasCrossEncoder => _crossEncoder != null;
+  String? get chatModelPath => _chatModelPath;
+
+  /// Initialize NobodyWho runtime (must be called once at app start)
+  static Future<void> initRuntime() async {
+    await nw.NobodyWho.init();
   }
 
-  /// Initialize in mock mode (no model needed — for development)
+  /// Load the chat model from a GGUF file path
+  Future<void> loadChatModel({
+    required String modelPath,
+    Function(String)? onStatus,
+  }) async {
+    onStatus?.call('Loading model...');
+
+    _chatModel = await nw.Model.load(
+      modelPath: modelPath,
+      useGpu: true,
+    );
+    _chatModelPath = modelPath;
+
+    _chat = nw.Chat(
+      model: _chatModel!,
+      systemPrompt: _systemPrompt,
+      contextSize: 4096,
+      allowThinking: false,
+    );
+
+    _isInitialized = true;
+    _useMock = false;
+    onStatus?.call('Model loaded');
+  }
+
+  /// Load a cross-encoder model for RAG reranking
+  Future<void> loadCrossEncoder({required String modelPath}) async {
+    _crossEncoder = await nw.CrossEncoder.fromPath(modelPath: modelPath);
+  }
+
+  /// Initialize in mock mode (no model needed — for development/testing)
   void initializeMock() {
     _useMock = true;
     _isInitialized = true;
   }
 
-  /// Generate a response using routed RAG
-  ///
-  /// 1. Routes the query to relevant categories via QueryRouter
-  /// 2. Searches the knowledge base with category-weighted scoring
-  /// 3. Builds a prompt with boat context + ranked knowledge
-  /// 4. Generates a response (mock or real LLM)
+  /// Dispose models and free resources
+  void dispose() {
+    if (_chatModel != null && !_chatModel!.isDisposed) {
+      _chatModel!.dispose();
+    }
+    if (_crossEncoder != null && !_crossEncoder!.isDisposed) {
+      _crossEncoder!.dispose();
+    }
+    _chatModel = null;
+    _chat = null;
+    _crossEncoder = null;
+    _isInitialized = false;
+  }
+
+  /// Generate a response using routed RAG + NobodyWho inference
   Future<String> chat({
     required String userMessage,
     required BoatProfile boat,
     required DatabaseService db,
     List<String>? conversationHistory,
   }) async {
-    // Step 1: Route the query to relevant knowledge categories
+    // Step 1: Route the query
     final routedCategories = _router.route(userMessage);
 
-    // Step 2: Retrieve and rank knowledge chunks using routed categories
+    // Step 2: Retrieve knowledge chunks
     final rankedChunks = await db.routedSearch(userMessage, routedCategories);
 
-    // Step 3: Generate response (mock or real LLM)
-    if (_useMock) {
-      return _mockResponse(userMessage, rankedChunks, routedCategories, boat);
+    // Step 3: Rerank with CrossEncoder if available
+    List<RankedChunk> finalChunks;
+    if (_crossEncoder != null && rankedChunks.isNotEmpty) {
+      finalChunks = await _rerankWithCrossEncoder(userMessage, rankedChunks);
+    } else {
+      finalChunks = rankedChunks;
     }
 
-    // Real LLM path: build prompt with context and send to NobodyWho
+    // Step 4: Generate response
+    if (_useMock || _chat == null) {
+      return _mockResponse(userMessage, finalChunks, routedCategories, boat);
+    }
+
+    // Build prompt with RAG context and send to NobodyWho
     final queryTags = _router.extractTags(userMessage);
-    final chunks = rankedChunks.map((r) => r.chunk).toList();
-    final prompt = _buildPrompt(
+    final chunks = finalChunks.map((r) => r.chunk).toList();
+    final prompt = _buildRagPrompt(
       userMessage: userMessage,
       boat: boat,
       chunks: chunks,
@@ -70,12 +124,15 @@ class AiService {
       history: conversationHistory,
     );
 
-    // TODO: Wire up NobodyWho (requires Dart >=3.8 / Flutter >=3.41.6)
-    // final response = await _chat!.ask(prompt).completed();
-    // return response;
-    return prompt.isNotEmpty
-        ? 'AI model not loaded. Please download a GGUF model in Settings.'
-        : '';
+    // Reset context with updated system prompt including RAG context
+    await _chat!.resetContext(
+      systemPrompt: prompt,
+      tools: [],
+    );
+
+    // Ask the model
+    final response = await _chat!.ask(userMessage).completed();
+    return _stripThinkingTags(response);
   }
 
   /// Stream a response token by token
@@ -85,22 +142,119 @@ class AiService {
     required DatabaseService db,
     List<String>? conversationHistory,
   }) async* {
-    final response = await chat(
+    if (_useMock || _chat == null) {
+      // Mock streaming
+      final response = await chat(
+        userMessage: userMessage,
+        boat: boat,
+        db: db,
+        conversationHistory: conversationHistory,
+      );
+      final words = response.split(' ');
+      for (int i = 0; i < words.length; i++) {
+        yield '${words[i]} ';
+        await Future.delayed(const Duration(milliseconds: 20));
+      }
+      return;
+    }
+
+    // Real NobodyWho streaming
+    final routedCategories = _router.route(userMessage);
+    final rankedChunks = await db.routedSearch(userMessage, routedCategories);
+
+    List<RankedChunk> finalChunks;
+    if (_crossEncoder != null && rankedChunks.isNotEmpty) {
+      finalChunks = await _rerankWithCrossEncoder(userMessage, rankedChunks);
+    } else {
+      finalChunks = rankedChunks;
+    }
+
+    final queryTags = _router.extractTags(userMessage);
+    final chunks = finalChunks.map((r) => r.chunk).toList();
+    final prompt = _buildRagPrompt(
       userMessage: userMessage,
       boat: boat,
-      db: db,
-      conversationHistory: conversationHistory,
+      chunks: chunks,
+      routedCategories: routedCategories,
+      queryTags: queryTags,
+      history: conversationHistory,
     );
 
-    // Simulate streaming by yielding word by word
-    final words = response.split(' ');
-    for (int i = 0; i < words.length; i++) {
-      yield '${words[i]} ';
-      await Future.delayed(const Duration(milliseconds: 20));
+    await _chat!.resetContext(systemPrompt: prompt, tools: []);
+
+    final stream = _chat!.ask(userMessage);
+    bool inThinking = false;
+    await for (final token in stream) {
+      // Filter out <think>...</think> tags from streaming output
+      if (token.contains('<think>')) {
+        inThinking = true;
+        continue;
+      }
+      if (token.contains('</think>')) {
+        inThinking = false;
+        continue;
+      }
+      if (!inThinking) {
+        yield token;
+      }
     }
   }
 
-  String _buildPrompt({
+  /// Ask a question about a photo using a vision model
+  Future<String> askAboutPhoto({
+    required String imagePath,
+    required String question,
+    required String visionModelPath,
+    required String mmprojPath,
+  }) async {
+    final model = await nw.Model.load(
+      modelPath: visionModelPath,
+      imageIngestion: mmprojPath,
+      useGpu: true,
+    );
+
+    final chat = nw.Chat(
+      model: model,
+      systemPrompt: 'You are a marine equipment visual inspector. Identify the component, '
+          'assess its condition (good/worn/damaged/failed), describe any visible problems '
+          '(corrosion, cracks, leaks, wear), and suggest what system it belongs to. '
+          'Be specific and practical.',
+      contextSize: 4096,
+    );
+
+    final response = await chat.askWithPrompt(nw.Prompt([
+      nw.TextPart(question.isEmpty ? 'What do you see? Identify the part and any problems.' : question),
+      nw.ImagePart(imagePath),
+    ])).completed();
+
+    model.dispose();
+    return _stripThinkingTags(response);
+  }
+
+  /// Rerank chunks using the CrossEncoder for better relevance
+  Future<List<RankedChunk>> _rerankWithCrossEncoder(
+    String query,
+    List<RankedChunk> chunks,
+  ) async {
+    if (_crossEncoder == null || chunks.isEmpty) return chunks;
+
+    final documents = chunks.map((c) => c.chunk.content).toList();
+    final ranked = await _crossEncoder!.rankAndSort(
+      query: query,
+      documents: documents,
+    );
+
+    // Map back to RankedChunks with cross-encoder scores
+    final result = <RankedChunk>[];
+    for (final (doc, score) in ranked.take(8)) {
+      final original = chunks.firstWhere((c) => c.chunk.content == doc);
+      result.add(RankedChunk(chunk: original.chunk, score: score));
+    }
+    return result;
+  }
+
+  /// Build RAG-augmented system prompt
+  String _buildRagPrompt({
     required String userMessage,
     required BoatProfile boat,
     required List<KnowledgeChunk> chunks,
@@ -109,30 +263,7 @@ class AiService {
     List<String>? history,
   }) {
     final buffer = StringBuffer();
-
-    buffer.writeln('You are Boatman, an expert marine mechanic and sailing advisor.');
-    buffer.writeln('You help sailors diagnose problems, perform repairs, and maintain their vessels.');
-    buffer.writeln();
-    buffer.writeln('RESPONSE RULES:');
-    buffer.writeln('1. SAFETY FIRST: Start every repair answer with relevant safety warnings (isolation, PPE, risks).');
-    buffer.writeln('2. DIAGNOSE BEFORE FIXING: If the user describes a symptom, ask clarifying questions or walk through a diagnostic sequence before jumping to a fix.');
-    buffer.writeln('3. STEP-BY-STEP: Always provide numbered step-by-step instructions. Each step should be one clear action.');
-    buffer.writeln('4. SPECIFIC TO THEIR BOAT: Reference the vessel information below. Use their specific engine make/model, equipment, etc. when available.');
-    buffer.writeln('5. PARTS AND SPECS: If the knowledge base contains part numbers, torque specs, fluid types, or tool sizes for their equipment, include them.');
-    buffer.writeln('6. WHEN TO STOP: If the repair is beyond a DIY sailor\'s ability, say so clearly and explain why.');
-    buffer.writeln('7. TEMPORARY vs PERMANENT: If at sea, offer a safe temporary fix first, then explain the proper permanent repair for when they reach port.');
-    buffer.writeln('8. TOOL LIST: At the start of any repair procedure, list the tools and materials needed.');
-    buffer.writeln('9. VERIFICATION: End repair procedures with how to verify the fix worked.');
-    buffer.writeln('10. USE THE KNOWLEDGE BASE: Your answers must be grounded in the technical knowledge provided below. Do not invent specs or procedures.');
-    buffer.writeln('11. PHOTOS: When the user attaches a photo, analyze what they describe seeing. Ask follow-up questions about colors, textures, location, and context to identify the component and diagnose the issue. Guide them to look for specific visual clues.');
-    buffer.writeln();
-
-    // Routing context — tells the LLM what domains are relevant
-    buffer.writeln('=== QUERY ROUTING ===');
-    buffer.writeln('Detected domains: ${routedCategories.map((c) => '${c.category}(${c.weight.toStringAsFixed(1)})').join(', ')}');
-    if (queryTags.isNotEmpty) {
-      buffer.writeln('Sub-topics: ${queryTags.join(', ')}');
-    }
+    buffer.writeln(_systemPrompt);
     buffer.writeln();
 
     buffer.writeln('=== VESSEL INFORMATION ===');
@@ -154,19 +285,38 @@ class AiService {
 
     if (history != null && history.isNotEmpty) {
       buffer.writeln('=== CONVERSATION HISTORY ===');
-      for (final msg in history) {
+      for (final msg in history.take(10)) {
         buffer.writeln(msg);
       }
       buffer.writeln();
     }
 
-    buffer.writeln('=== USER QUESTION ===');
-    buffer.writeln(userMessage);
-
     return buffer.toString();
   }
 
-  /// Mock response that uses routed chunks to generate realistic answers
+  /// Strip <think>...</think> tags from model output
+  String _stripThinkingTags(String text) {
+    return text.replaceAll(RegExp(r'<think>.*?</think>', dotAll: true), '').trim();
+  }
+
+  /// Core system prompt
+  static const _systemPrompt = '''You are Boatman, an expert marine mechanic and sailing advisor.
+You help sailors diagnose problems, perform repairs, and maintain their vessels.
+
+RESPONSE RULES:
+1. SAFETY FIRST: Start every repair answer with relevant safety warnings (isolation, PPE, risks).
+2. DIAGNOSE BEFORE FIXING: If the user describes a symptom, ask clarifying questions or walk through a diagnostic sequence before jumping to a fix.
+3. STEP-BY-STEP: Always provide numbered step-by-step instructions. Each step should be one clear action.
+4. SPECIFIC TO THEIR BOAT: Reference the vessel information below. Use their specific engine make/model, equipment, etc. when available.
+5. PARTS AND SPECS: If the knowledge base contains part numbers, torque specs, fluid types, or tool sizes for their equipment, include them.
+6. WHEN TO STOP: If the repair is beyond a DIY sailor's ability, say so clearly and explain why.
+7. TEMPORARY vs PERMANENT: If at sea, offer a safe temporary fix first, then explain the proper permanent repair for when they reach port.
+8. TOOL LIST: At the start of any repair procedure, list the tools and materials needed.
+9. VERIFICATION: End repair procedures with how to verify the fix worked.
+10. USE THE KNOWLEDGE BASE: Your answers must be grounded in the technical knowledge provided below. Do not invent specs or procedures.
+11. PHOTOS: When the user attaches a photo, analyze what they describe seeing. Guide them to look for specific visual clues.''';
+
+  /// Mock response for when no model is loaded
   String _mockResponse(
     String query,
     List<RankedChunk> rankedChunks,
@@ -181,7 +331,6 @@ class AiService {
     final catLabel = _categoryLabels[primaryCat] ?? 'General';
     final hasPhoto = query.contains('[USER ATTACHED PHOTO]') || query.contains('[photo attached]');
 
-    // Photo-specific mock response
     if (hasPhoto && rankedChunks.isEmpty) {
       return '$boatCtx**Photo Received**\n\n'
           'I can see you\'ve attached a photo. To help you best, please tell me:\n\n'
@@ -198,31 +347,21 @@ class AiService {
           '_[Mock mode — describe what you see for guided diagnosis]_';
     }
 
-    // If we found relevant chunks, build a response from them
     if (rankedChunks.isNotEmpty) {
       final buffer = StringBuffer();
       buffer.write(boatCtx);
 
-      // Show the most relevant chunks as the answer with full content
       final topChunks = rankedChunks.take(3).toList();
       for (int i = 0; i < topChunks.length; i++) {
         final rc = topChunks[i];
         final chunk = rc.chunk;
-
-        // Section header with source reference link
         buffer.writeln('### ${chunk.title}');
         buffer.writeln('_From: ${chunk.sourceId.replaceAll("_", " ")} · ${chunk.category}_\n');
-
-        // Full chunk content — no truncation
         buffer.writeln(chunk.content);
         buffer.writeln();
-
-        // Clickable reference link to view this section in context
-        // Format: [REF:sourceId:chunkIndex:label] — parsed by chat screen
         buffer.writeln('[REF:${chunk.sourceId}:${chunk.chunkIndex}:Read full section in context →]\n');
       }
 
-      // Additional references
       if (rankedChunks.length > 3) {
         buffer.writeln('---');
         buffer.writeln('**Related sections:**\n');
@@ -236,14 +375,12 @@ class AiService {
       return buffer.toString();
     }
 
-    // Fallback: no chunks found — give a helpful category-aware message
     return '$boatCtx**$catLabel**\n\n'
         'I searched the knowledge base but didn\'t find a strong match for your question. '
         'This might be because:\n\n'
         '1. The relevant skill pack isn\'t loaded yet — check the **Knowledge** tab\n'
         '2. Try rephrasing with more specific terms (e.g., "impeller replacement" instead of "pump broken")\n'
         '3. Import your equipment\'s manual (PDF) for vessel-specific information\n\n'
-        'I routed your query to: ${categories.map((c) => "${c.category}(${c.weight.toStringAsFixed(1)})").join(", ")}\n\n'
         '_[Mock mode — install a GGUF model for real AI responses]_';
   }
 
@@ -260,4 +397,20 @@ class AiService {
     'corrosion': 'Corrosion & Fasteners',
     'general': 'General Maintenance',
   };
+
+  /// Get the path where models should be stored
+  static Future<String> getModelsDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final modelsDir = Directory(p.join(appDir.path, 'models'));
+    if (!await modelsDir.exists()) {
+      await modelsDir.create(recursive: true);
+    }
+    return modelsDir.path;
+  }
+
+  /// Check if a model file exists at the expected path
+  static Future<bool> modelExists(String filename) async {
+    final dir = await getModelsDirectory();
+    return File(p.join(dir, filename)).exists();
+  }
 }

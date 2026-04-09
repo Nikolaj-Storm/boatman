@@ -53,7 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (photo != null) {
       imagePath = photo.path;
-      imageAnalysis = photo.analysis.toPromptContext();
+      imageAnalysis = PhotoService.buildPhotoPromptContext();
       if (text.isEmpty) {
         messageContent = 'What can you tell me about this? [photo attached]';
       }
@@ -264,9 +264,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             color: Theme.of(context).colorScheme.primary,
                           )),
                       Text(
-                        _pendingPhoto!.analysis.isVisionAvailable
-                            ? 'AI will analyze this image'
-                            : 'Describe what you see for best results',
+                        'Describe what you see for best results',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],

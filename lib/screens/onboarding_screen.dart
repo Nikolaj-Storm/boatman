@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -96,9 +97,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Load skill packs into database
     await skillPackService.loadAllSkillPacks(db);
 
-    // Initialize AI in mock mode for simulator
-    aiService.initializeMock();
-    appState.setModelLoaded(true);
+    // Try to load a model if one exists on device, otherwise mock mode
+    final modelsDir = await AiService.getModelsDirectory();
+    final ggufFiles = Directory(modelsDir)
+        .listSync()
+        .where((f) => f.path.endsWith('.gguf'))
+        .toList();
+
+    if (ggufFiles.isNotEmpty) {
+      try {
+        await aiService.loadChatModel(modelPath: ggufFiles.first.path);
+        appState.setModelLoaded(true);
+      } catch (_) {
+        aiService.initializeMock();
+        appState.setModelLoaded(true);
+      }
+    } else {
+      aiService.initializeMock();
+      appState.setModelLoaded(true);
+    }
 
     appState.completeOnboarding();
 

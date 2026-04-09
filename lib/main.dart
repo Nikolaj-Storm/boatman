@@ -13,6 +13,9 @@ import 'package:boatman/screens/onboarding_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize NobodyWho runtime (loads native FFI bridge)
+  await AiService.initRuntime();
+
   final dbService = DatabaseService();
   await dbService.initialize();
 

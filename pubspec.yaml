@@ -4,14 +4,14 @@ publish_to: 'none'
 version: 0.1.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: ^3.11.0
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  # NobodyWho will be added when using Flutter SDK >=3.41.6 (Dart >=3.8)
-  # nobodywho: ^0.5.2
+  # On-device LLM inference engine
+  nobodywho: ^0.5.2
   # Local database
   sqflite: ^2.3.3
   path: ^1.9.0
