@@ -1,58 +1,45 @@
 %%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#fff', 'primaryTextColor': '#333', 'primaryBorderColor': '#ccc', 'lineColor': '#999', 'secondaryColor': '#fafafa', 'tertiaryColor': '#fafafa', 'fontSize': '18px', 'fontFamily': 'Segoe UI, Helvetica, sans-serif', 'clusterBkg': '#fafafa', 'clusterBorder': '#ddd' } } }%%
 
-graph TB
+graph LR
 
-    subgraph client [" Mobile App "]
-        direction LR
+    subgraph left [" App Layer "]
+        direction TB
         Flutter["<b style='font-size:20px'>Flutter</b><br/>Cross-platform UI"]
         Provider["<b style='font-size:20px'>Provider</b><br/>State management"]
         Theme["<b style='font-size:20px'>Boatman Theme</b><br/>Maritime UX"]
     end
 
-    subgraph screens [" Screens "]
-        direction LR
+    subgraph middle [" Screens & Services "]
+        direction TB
         Chat["<b style='font-size:20px'>Chat</b><br/>AI assistant"]
         BoatProfile["<b style='font-size:20px'>Boat Profile</b><br/>Vessel config"]
-        Knowledge["<b style='font-size:20px'>Knowledge</b><br/>Skill packs"]
-        Settings["<b style='font-size:20px'>Settings</b><br/>Mode · theme"]
-    end
-
-    subgraph services [" Core Services "]
-        direction LR
         AiService["<b style='font-size:20px'>AI Service</b><br/>RAG pipeline"]
         QueryRouter["<b style='font-size:20px'>Query Router</b><br/>12 categories"]
         PhotoService["<b style='font-size:20px'>Photo Service</b><br/>Capture · analyze"]
         ImportService["<b style='font-size:20px'>Manual Import</b><br/>PDF · TXT · MD"]
     end
 
-    client -- "navigate" --> screens
-    screens -- "user request" --> services
-
-    subgraph storage [" On-Device Storage "]
-        direction LR
+    subgraph right1 [" On-Device Data "]
+        direction TB
         SQLite["<b style='font-size:20px'>SQLite</b><br/>boats · chats · chunks"]
         LocalFiles["<b style='font-size:20px'>Local Files</b><br/>photos · manuals"]
+        P1["<b style='font-size:20px'>Diesel · Electrical</b>"]
+        P2["<b style='font-size:20px'>Plumbing · Rigging</b>"]
+        P3["<b style='font-size:20px'>Safety · Seamanship</b>"]
+        P4["<b style='font-size:20px'>Fiberglass · Hydraulics</b>"]
+        P5["<b style='font-size:20px'>Diagnostics · Corrosion</b>"]
     end
 
-    subgraph packs [" 10 Skill Packs "]
-        direction LR
-        P1["<b style='font-size:20px'>Diesel · Electrical</b><br/>engines · wiring · solar"]
-        P2["<b style='font-size:20px'>Plumbing · Rigging</b><br/>water · sails · deck"]
-        P3["<b style='font-size:20px'>Safety · Seamanship</b><br/>triage · emergency"]
-        P4["<b style='font-size:20px'>Fiberglass · Hydraulics</b><br/>hull · hoses · steering"]
-        P5["<b style='font-size:20px'>Diagnostics · Corrosion</b><br/>troubleshoot · fasteners"]
-    end
-
-    subgraph external [" Shore Mode Only "]
-        direction LR
+    subgraph right2 [" Shore Mode "]
+        direction TB
         WebSearch["<b style='font-size:20px'>DuckDuckGo</b><br/>Manual search"]
         Downloads["<b style='font-size:20px'>Web Downloads</b><br/>PDF · HTML"]
         NobodyWho["<b style='font-size:20px'>NobodyWho LLM</b><br/>on-device inference<br/><i style='color:#999'>planned</i>"]
     end
 
-    services -- "read / write" --> storage
-    services -- "retrieve chunks" --> packs
-    services -. "online only" .-> external
+    left -- "navigate" --> middle
+    middle -- "read / write" --> right1
+    middle -. "online only" .-> right2
 
     %% ── Styles ──
     classDef blue fill:#e8eaf6,stroke:#7986cb,stroke-width:1.5px,color:#283593
@@ -63,7 +50,7 @@ graph TB
     classDef coral fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#c62828
 
     class Flutter,Provider,Theme blue
-    class Chat,BoatProfile,Knowledge,Settings green
+    class Chat,BoatProfile green
     class AiService,QueryRouter,PhotoService,ImportService orange
     class SQLite,LocalFiles purple
     class P1,P2,P3,P4,P5 teal
@@ -71,6 +58,4 @@ graph TB
 
     linkStyle 0 stroke:#999,stroke-width:1.5px
     linkStyle 1 stroke:#999,stroke-width:1.5px
-    linkStyle 2 stroke:#999,stroke-width:1.5px
-    linkStyle 3 stroke:#999,stroke-width:1.5px
-    linkStyle 4 stroke:#bbb,stroke-width:1.5px,stroke-dasharray:5
+    linkStyle 2 stroke:#bbb,stroke-width:1.5px,stroke-dasharray:5
