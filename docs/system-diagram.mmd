@@ -1,0 +1,161 @@
+%% Boatman System Architecture Diagram
+%% An offline-first AI sailing assistant built with Flutter
+
+graph TB
+    %% ── User Entry ──
+    User([Sailor / User])
+
+    %% ── Presentation Layer ──
+    subgraph Presentation["Presentation Layer (Flutter Screens)"]
+        direction LR
+        Home["HomeScreen<br/>(4-tab navigation)"]
+        Chat["ChatScreen<br/>Markdown rendering<br/>Photo attachments<br/>Streaming responses"]
+        Boat["BoatProfileScreen<br/>Vessel configuration"]
+        KB["KnowledgeBaseScreen<br/>Browse skill packs"]
+        Settings["SettingsScreen<br/>Model, theme, storage"]
+        Onboarding["OnboardingScreen<br/>Initial boat setup"]
+        ChunkCtx["ChunkContextScreen<br/>Full-section viewer"]
+    end
+
+    User --> Home
+    Home --> Chat
+    Home --> Boat
+    Home --> KB
+    Home --> Settings
+    User -.->|first launch| Onboarding
+    Chat -->|knowledge reference tap| ChunkCtx
+
+    %% ── State Management ──
+    subgraph State["State Management (Provider)"]
+        AppState["AppState (ChangeNotifier)<br/>- App Mode: Shore / Sea<br/>- Active Boat Profile<br/>- Active Chat Session<br/>- Model Load Status<br/>- Theme Mode<br/>- Onboarding Flag"]
+    end
+
+    Chat <--> AppState
+    Boat <--> AppState
+    Settings <--> AppState
+    Onboarding --> AppState
+
+    %% ── Service Layer ──
+    subgraph Services["Service Layer"]
+        direction TB
+
+        AiService["AiService<br/>RAG pipeline orchestrator<br/>Prompt builder<br/>Response streamer<br/>(Mock / NobodyWho)"]
+        QueryRouter["QueryRouter<br/>12 categories, 60+ sub-tags<br/>Keyword scoring<br/>Category ranking"]
+        PhotoService["PhotoService<br/>Camera / Gallery capture<br/>Image storage<br/>Visual analysis (future)"]
+        DBService["DatabaseService<br/>SQLite CRUD<br/>Routed search<br/>Weighted chunk scoring"]
+        SkillPackService["SkillPackService<br/>Load markdown packs<br/>Heading-based chunking<br/>Auto-tagging (60+ rules)"]
+        ManualImport["ManualImportService<br/>PDF / TXT / MD import<br/>PDF text extraction<br/>Chunk & store"]
+        ManualSearch["ManualSearchService<br/>Web search (DuckDuckGo)<br/>Equipment-specific suggestions<br/>Download & convert"]
+    end
+
+    AppState --> AiService
+    AiService --> QueryRouter
+    AiService --> DBService
+    AiService --> PhotoService
+    KB --> SkillPackService
+    SkillPackService --> DBService
+    ManualImport --> DBService
+    ManualSearch --> ManualImport
+
+    %% ── Data Layer ──
+    subgraph Data["Data Layer (SQLite - boatman.db)"]
+        direction LR
+        BoatProfiles[("boat_profiles<br/>vessel, engine, electrical,<br/>equipment, capacity")]
+        KnowledgeChunks[("knowledge_chunks<br/>category, tags, content<br/>source_type, chunk_index")]
+        ChatSessions[("chat_sessions<br/>title, boat_profile_id,<br/>timestamps")]
+        ChatMessages[("chat_messages<br/>role, content, image_path,<br/>image_analysis")]
+        ManualMeta[("manual_meta<br/>source_id, file_name,<br/>chunk_count")]
+    end
+
+    DBService --> BoatProfiles
+    DBService --> KnowledgeChunks
+    DBService --> ChatSessions
+    DBService --> ChatMessages
+    DBService --> ManualMeta
+    ChatSessions -.->|FK| BoatProfiles
+    ChatMessages -.->|FK| ChatSessions
+
+    %% ── Knowledge Assets ──
+    subgraph SkillPacks["Skill Packs (assets/skill_packs/)"]
+        direction LR
+        SP1["marine_diesel_engines"]
+        SP2["marine_electrical_systems"]
+        SP3["marine_plumbing_water_systems"]
+        SP4["seamanship_emergency"]
+        SP5["fiberglass_hull_repair"]
+        SP6["rigging_sails_deck"]
+        SP7["repair_safety_triage"]
+        SP8["field_diagnostics"]
+        SP9["hydraulics_and_hoses"]
+        SP10["corrosion_and_fasteners"]
+    end
+
+    SkillPackService --> SkillPacks
+
+    %% ── Local File System ──
+    subgraph FileSystem["Local File System"]
+        Photos["chat_photos/<br/>UUID-named images"]
+        Manuals["manuals/<br/>Imported PDF/TXT/MD"]
+    end
+
+    PhotoService --> Photos
+    ManualImport --> Manuals
+
+    %% ── External Services (Shore Mode Only) ──
+    subgraph External["External Services (Shore Mode Only)"]
+        DuckDuckGo["DuckDuckGo<br/>Web Search"]
+        WebContent["Web / PDF Downloads"]
+        FutureModel["NobodyWho LLM<br/>GGUF Model Download<br/>(future)"]
+    end
+
+    ManualSearch -->|"HTTP (shore only)"| DuckDuckGo
+    ManualSearch -->|"HTTP (shore only)"| WebContent
+    AiService -.->|"future integration"| FutureModel
+
+    %% ── RAG Query Flow ──
+    subgraph RAGFlow["RAG Query Flow"]
+        direction LR
+        Q1["1. User Message"]
+        Q2["2. Route Query<br/>to Categories"]
+        Q3["3. Search Chunks<br/>by Category + Keywords"]
+        Q4["4. Build Prompt<br/>System + Boat + Chunks<br/>+ History + Question"]
+        Q5["5. Generate Response<br/>(Mock / LLM)"]
+        Q6["6. Stream to UI<br/>word-by-word"]
+        Q1 --> Q2 --> Q3 --> Q4 --> Q5 --> Q6
+    end
+
+    %% ── App Modes ──
+    subgraph Modes["App Modes"]
+        Shore["Shore Mode<br/>Internet available<br/>Search & download manuals<br/>Download AI models"]
+        Sea["Sea Mode<br/>Fully offline<br/>Local RAG chat<br/>Photo diagnostics"]
+    end
+
+    AppState --> Modes
+
+    %% ── Theme ──
+    subgraph Theme["BoatmanTheme"]
+        direction LR
+        Light["Light Theme<br/>Maritime blues<br/>High contrast"]
+        Dark["Dark Theme<br/>Red night tint<br/>Helm-safe"]
+    end
+
+    Settings --> Theme
+
+    %% ── Styling ──
+    classDef screen fill:#1a5276,stroke:#2980b9,color:#ecf0f1,stroke-width:2px
+    classDef service fill:#1e8449,stroke:#27ae60,color:#ecf0f1,stroke-width:2px
+    classDef data fill:#7d3c98,stroke:#9b59b6,color:#ecf0f1,stroke-width:2px
+    classDef external fill:#b9770e,stroke:#f39c12,color:#ecf0f1,stroke-width:2px
+    classDef state fill:#2c3e50,stroke:#34495e,color:#ecf0f1,stroke-width:2px
+    classDef asset fill:#1b4f72,stroke:#2e86c1,color:#ecf0f1,stroke-width:2px
+    classDef flow fill:#0e6655,stroke:#1abc9c,color:#ecf0f1,stroke-width:2px
+    classDef mode fill:#78281f,stroke:#c0392b,color:#ecf0f1,stroke-width:2px
+
+    class Home,Chat,Boat,KB,Settings,Onboarding,ChunkCtx screen
+    class AiService,QueryRouter,PhotoService,DBService,SkillPackService,ManualImport,ManualSearch service
+    class BoatProfiles,KnowledgeChunks,ChatSessions,ChatMessages,ManualMeta data
+    class DuckDuckGo,WebContent,FutureModel external
+    class AppState state
+    class SP1,SP2,SP3,SP4,SP5,SP6,SP7,SP8,SP9,SP10,Photos,Manuals asset
+    class Q1,Q2,Q3,Q4,Q5,Q6 flow
+    class Shore,Sea,Light,Dark mode
