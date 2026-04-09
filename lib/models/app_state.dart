@@ -61,10 +61,19 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void resetOnboarding() {
+  /// Full reset: wipes all user data from local database and resets state.
+  Future<void> resetOnboarding() async {
+    // Wipe all user data from local database
+    await _db.wipeAllData();
+
+    // Reset in-memory state
     _hasCompletedOnboarding = false;
     _activeBoat = null;
+    _boats = [];
+    _activeChat = null;
     _isModelLoaded = false;
+    _isModelLoading = false;
+    _modelLoadError = null;
     notifyListeners();
   }
 

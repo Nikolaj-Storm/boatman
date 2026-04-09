@@ -88,10 +88,9 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Restart Setup?'),
         content: const Text(
-          'This will reset the app and take you back to the onboarding screen. '
-          'Your data (manuals, skill packs) will be preserved, but you\'ll '
-          're-enter your boat details.\n\n'
-          'This is a testing feature.',
+          'This will wipe ALL local data — boat profile, imported manuals, '
+          'knowledge base, and chat history — and restart from scratch.\n\n'
+          'This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -111,12 +110,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _doRestart(AppState appState) {
-    appState.resetOnboarding();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      (_) => false,
-    );
+  Future<void> _doRestart(AppState appState) async {
+    await appState.resetOnboarding();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        (_) => false,
+      );
+    }
   }
 
   Widget _buildModeChip(AppState appState) {

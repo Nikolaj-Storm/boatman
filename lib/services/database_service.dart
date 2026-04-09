@@ -381,6 +381,16 @@ class DatabaseService {
     await db.delete('manual_meta', where: 'source_id = ?', whereArgs: [sourceId]);
   }
 
+  /// Wipe all user data — boat profiles, knowledge, manuals, chats.
+  /// Used by the restart/reset feature.
+  Future<void> wipeAllData() async {
+    await db.delete('chat_messages');
+    await db.delete('chat_sessions');
+    await db.delete('knowledge_chunks');
+    await db.delete('manual_meta');
+    await db.delete('boat_profiles');
+  }
+
   // Chat sessions
   Future<void> saveChatSession(ChatSession session) async {
     await db.insert(
