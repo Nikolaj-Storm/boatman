@@ -3,6 +3,8 @@ class ChatMessage {
   final String role; // 'user' or 'assistant'
   final String content;
   final DateTime timestamp;
+  final String? imagePath; // local path to attached photo
+  final String? imageAnalysis; // vision model analysis of the photo
   final List<String>? sourceChunks; // references used in RAG
 
   ChatMessage({
@@ -10,8 +12,12 @@ class ChatMessage {
     required this.role,
     required this.content,
     DateTime? timestamp,
+    this.imagePath,
+    this.imageAnalysis,
     this.sourceChunks,
   }) : timestamp = timestamp ?? DateTime.now();
+
+  bool get hasImage => imagePath != null;
 
   Map<String, dynamic> toMap() {
     return {
@@ -19,6 +25,8 @@ class ChatMessage {
       'role': role,
       'content': content,
       'timestamp': timestamp.toIso8601String(),
+      'image_path': imagePath,
+      'image_analysis': imageAnalysis,
     };
   }
 
@@ -28,6 +36,8 @@ class ChatMessage {
       role: map['role'] as String,
       content: map['content'] as String,
       timestamp: DateTime.parse(map['timestamp'] as String),
+      imagePath: map['image_path'] as String?,
+      imageAnalysis: map['image_analysis'] as String?,
     );
   }
 

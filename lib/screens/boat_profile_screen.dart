@@ -15,7 +15,13 @@ class BoatProfileScreen extends StatelessWidget {
       return const Center(child: Text('No boat profile set up'));
     }
 
-    return SingleChildScrollView(
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _editBoat(context, boat),
+        icon: const Icon(Icons.edit),
+        label: const Text('Edit Boat'),
+      ),
+      body: SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,9 +134,10 @@ class BoatProfileScreen extends StatelessWidget {
               _buildActionButton(context, 'Import a manual (PDF)', Icons.upload_file),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 80), // space for FAB
         ],
       ),
+    ),
     );
   }
 

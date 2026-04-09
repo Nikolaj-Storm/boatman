@@ -124,6 +124,7 @@ class AiService {
     buffer.writeln('8. TOOL LIST: At the start of any repair procedure, list the tools and materials needed.');
     buffer.writeln('9. VERIFICATION: End repair procedures with how to verify the fix worked.');
     buffer.writeln('10. USE THE KNOWLEDGE BASE: Your answers must be grounded in the technical knowledge provided below. Do not invent specs or procedures.');
+    buffer.writeln('11. PHOTOS: When the user attaches a photo, analyze what they describe seeing. Ask follow-up questions about colors, textures, location, and context to identify the component and diagnose the issue. Guide them to look for specific visual clues.');
     buffer.writeln();
 
     // Routing context — tells the LLM what domains are relevant
@@ -178,6 +179,24 @@ class AiService {
 
     final primaryCat = categories.isNotEmpty ? categories.first.category : 'general';
     final catLabel = _categoryLabels[primaryCat] ?? 'General';
+    final hasPhoto = query.contains('[USER ATTACHED PHOTO]') || query.contains('[photo attached]');
+
+    // Photo-specific mock response
+    if (hasPhoto && rankedChunks.isEmpty) {
+      return '$boatCtx**Photo Received**\n\n'
+          'I can see you\'ve attached a photo. To help you best, please tell me:\n\n'
+          '1. **What part/component** is shown in the photo?\n'
+          '2. **What does the problem look like?** (leak, crack, corrosion, discoloration, missing part)\n'
+          '3. **What color** is any fluid, residue, or buildup you see?\n'
+          '   - Green/white crusty = electrical corrosion\n'
+          '   - Pink/salmon metal = dezincification (brass)\n'
+          '   - Dark oily = oil/fuel leak\n'
+          '   - White milky = water in oil (head gasket)\n'
+          '   - Rust orange = steel corrosion\n'
+          '4. **Where on the boat** is this located?\n\n'
+          'With a GGUF vision model installed (Qwen3-VL), I can analyze photos directly.\n\n'
+          '_[Mock mode — describe what you see for guided diagnosis]_';
+    }
 
     // If we found relevant chunks, build a response from them
     if (rankedChunks.isNotEmpty) {

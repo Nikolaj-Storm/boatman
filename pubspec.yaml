@@ -30,6 +30,8 @@ dependencies:
   uuid: ^4.5.1
   # URL launcher
   url_launcher: ^6.3.1
+  # Camera and photo picker
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
