@@ -1,68 +1,73 @@
-%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#fff', 'primaryTextColor': '#333', 'primaryBorderColor': '#ccc', 'lineColor': '#aaa', 'secondaryColor': '#fafafa', 'tertiaryColor': '#fafafa', 'fontSize': '14px', 'fontFamily': 'Segoe UI, Helvetica, sans-serif', 'clusterBkg': '#fafafa', 'clusterBorder': '#ddd' } } }%%
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#fff', 'primaryTextColor': '#333', 'primaryBorderColor': '#ccc', 'lineColor': '#666', 'secondaryColor': '#fafafa', 'tertiaryColor': '#fafafa', 'fontSize': '14px', 'fontFamily': 'Segoe UI, Helvetica, sans-serif', 'clusterBkg': '#fffde7', 'clusterBorder': '#e0c97f' } } }%%
 
-block-beta
-    columns 13
+flowchart LR
 
-    space:13
+    subgraph ingest ["Prepare Knowledge"]
+        direction TB
+        SKP["10 Skill Packs\ndiesel · electrical · plumbing\nrigging · seamanship · safety\nfiberglass · diagnostics\nhydraulics · corrosion"]
+        MAN["Manual Import\nPDF · TXT · MD"]
+        WEB["Web Search\n(shore mode only)"]
 
-    block:client["App Layer"]:3
-        Flutter["<b>Flutter</b>\nCross-platform UI"]
-        Provider["<b>Provider</b>\nState mgmt"]
-        Theme["<b>Boatman Theme</b>\nMaritime UX"]
-    end
-    space
-    block:screens["Screens"]:4
-        Chat["<b>Chat</b>\nAI assistant"]
-        BoatProfile["<b>Boat Profile</b>\nVessel config"]
-        Knowledge["<b>Knowledge</b>\nSkill packs"]
-        Settings["<b>Settings</b>\nMode · theme"]
-    end
-    space
-    block:services["Core Services"]:4
-        AiService["<b>AI Service</b>\nRAG pipeline"]
-        QueryRouter["<b>Query Router</b>\n12 categories"]
-        PhotoService["<b>Photo Service</b>\nCapture · analyze"]
-        ImportService["<b>Manual Import</b>\nPDF · TXT · MD"]
+        SKP --> chunk["Split into\nchunks by\nheadings"]
+        MAN --> chunk
+        WEB --> chunk
+
+        chunk --> tag["Auto-tag\n12 categories\n60+ sub-tags"]
     end
 
-    space:13
-
-    block:storage["On-Device Storage"]:2
-        SQLite["<b>SQLite</b>\nboats · chats · chunks"]
-        LocalFiles["<b>Local Files</b>\nphotos · manuals"]
+    subgraph db ["Knowledge Base"]
+        direction TB
+        DB[("SQLite\ntagged chunks\nboat profiles\nchat history")]
     end
-    space
-    block:packs["10 Skill Packs"]:5
-        P1["<b>Diesel\nElectrical</b>"]
-        P2["<b>Plumbing\nRigging</b>"]
-        P3["<b>Safety\nSeamanship</b>"]
-        P4["<b>Fiberglass\nHydraulics</b>"]
-        P5["<b>Diagnostics\nCorrosion</b>"]
+
+    tag ---> DB
+
+    subgraph ask ["User Asks a Question"]
+        direction TB
+        Q(["Sailor types\na question"])
+        PHOTO["or attaches\na photo"]
+        Q ~~~ PHOTO
     end
-    space
-    block:external["Shore Mode Only"]:3
-        WebSearch["<b>DuckDuckGo</b>\nManual search"]
-        Downloads["<b>Web Downloads</b>\nPDF · HTML"]
-        NobodyWho["<b>NobodyWho LLM</b>\non-device inference\n(planned)"]
+
+    subgraph think ["Boatman Thinks"]
+        direction TB
+        ROUTE["Route query\nto categories\n& sub-tags"]
+        SEARCH["Search\nmatching\nchunks"]
+        BOAT{{"Boat Profile\nengine · electrical\nequipment · hull"}}
+        BUILD["Assemble prompt\ninstructions + boat context\n+ best chunks + history\n+ question"]
+
+        ROUTE --> SEARCH
+        SEARCH --> BUILD
+        BOAT --> BUILD
     end
-    space
 
-    client --> screens
-    screens --> services
-    services --> storage
-    services --> packs
-    services -.-> external
+    Q --> ROUTE
+    PHOTO -.-> BUILD
+    DB --> SEARCH
 
-    classDef blue fill:#e8eaf6,stroke:#7986cb,stroke-width:1.5px,color:#283593
-    classDef green fill:#e8f5e9,stroke:#81c784,stroke-width:1.5px,color:#2e7d32
-    classDef orange fill:#fff3e0,stroke:#ffb74d,stroke-width:1.5px,color:#e65100
-    classDef purple fill:#f3e5f5,stroke:#ba68c8,stroke-width:1.5px,color:#6a1b9a
-    classDef teal fill:#e0f2f1,stroke:#4db6ac,stroke-width:1.5px,color:#00695c
-    classDef coral fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#c62828
+    subgraph answer ["Boatman Answers"]
+        direction TB
+        LLM{"LLM\nNobodyWho\non-device"}
+        ANS["Step-by-step\nrepair guidance\nwith sources"]
+    end
 
-    class Flutter,Provider,Theme blue
-    class Chat,BoatProfile,Knowledge,Settings green
-    class AiService,QueryRouter,PhotoService,ImportService orange
-    class SQLite,LocalFiles purple
-    class P1,P2,P3,P4,P5 teal
-    class WebSearch,Downloads,NobodyWho coral
+    BUILD --> LLM
+    LLM --> ANS
+
+    ANS -. "follow-up" .-> Q
+
+    classDef source fill:#e8eaf6,stroke:#7986cb,stroke-width:1.5px,color:#283593
+    classDef process fill:#fff3e0,stroke:#ffb74d,stroke-width:1.5px,color:#e65100
+    classDef dbstyle fill:#f3e5f5,stroke:#ba68c8,stroke-width:2px,color:#6a1b9a
+    classDef user fill:#e8f5e9,stroke:#81c784,stroke-width:2px,color:#2e7d32
+    classDef llm fill:#fce4ec,stroke:#e57373,stroke-width:2px,color:#c62828
+    classDef answerstyle fill:#e0f2f1,stroke:#4db6ac,stroke-width:1.5px,color:#00695c
+    classDef boat fill:#fff9c4,stroke:#fdd835,stroke-width:2px,color:#f57f17
+
+    class SKP,MAN,WEB source
+    class chunk,tag,ROUTE,SEARCH,BUILD,PHOTO process
+    class DB dbstyle
+    class Q user
+    class LLM llm
+    class ANS answerstyle
+    class BOAT boat
