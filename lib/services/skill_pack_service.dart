@@ -7,6 +7,7 @@ class SkillPackService {
   static const _uuid = Uuid();
 
   static final List<SkillPack> availablePacks = [
+    // Domain-specific packs
     SkillPack(
       id: 'marine_diesel_engines',
       name: 'Marine Diesel Engines',
@@ -31,9 +32,34 @@ class SkillPackService {
       category: 'plumbing',
       filename: 'marine_plumbing_water_systems.md',
     ),
+    // General / universal skill packs
+    SkillPack(
+      id: 'seamanship_emergency',
+      name: 'Seamanship & Emergency Procedures',
+      description: 'Knots, anchoring, man overboard, heavy weather, fire fighting, '
+          'first aid at sea, and emergency signaling procedures.',
+      category: 'seamanship',
+      filename: 'seamanship_emergency.md',
+    ),
+    SkillPack(
+      id: 'fiberglass_hull_repair',
+      name: 'Fiberglass & Hull Repair',
+      description: 'Gelcoat repair, fiberglass layup, osmotic blisters, core rot, '
+          'keel inspection, bottom painting, and epoxy work.',
+      category: 'fiberglass',
+      filename: 'fiberglass_hull_repair.md',
+    ),
+    SkillPack(
+      id: 'rigging_sails_deck',
+      name: 'Rigging, Sails & Deck Hardware',
+      description: 'Standing and running rigging inspection, sail repair, winch maintenance, '
+          'roller furling, blocks, and chainplate inspection.',
+      category: 'rigging',
+      filename: 'rigging_sails_deck.md',
+    ),
   ];
 
-  /// Load a skill pack from assets, chunk it, and save to database
+  /// Load a skill pack from assets, chunk it, tag it, and save to database
   Future<int> loadSkillPack(SkillPack pack, DatabaseService db) async {
     // Check if already loaded
     final loadedSources = await db.getLoadedSources();
@@ -47,10 +73,13 @@ class SkillPackService {
     // Chunk the markdown by sections
     final chunks = _chunkMarkdown(markdown, pack);
 
-    // Save to database
-    await db.saveChunks(chunks);
+    // Auto-tag each chunk based on content
+    final taggedChunks = chunks.map((c) => _autoTag(c)).toList();
 
-    return chunks.length;
+    // Save to database
+    await db.saveChunks(taggedChunks);
+
+    return taggedChunks.length;
   }
 
   /// Load all available skill packs
@@ -62,6 +91,77 @@ class SkillPackService {
     }
     return results;
   }
+
+  /// Auto-tag a chunk based on its content and title
+  KnowledgeChunk _autoTag(KnowledgeChunk chunk) {
+    final text = '${chunk.title} ${chunk.content}'.toLowerCase();
+    final matchedTags = <String>[];
+
+    for (final entry in _autoTagRules.entries) {
+      for (final keyword in entry.value) {
+        if (text.contains(keyword)) {
+          matchedTags.add(entry.key);
+          break; // One match per tag is enough
+        }
+      }
+    }
+
+    if (matchedTags.isEmpty) return chunk;
+
+    return KnowledgeChunk(
+      id: chunk.id,
+      sourceId: chunk.sourceId,
+      sourceType: chunk.sourceType,
+      category: chunk.category,
+      title: chunk.title,
+      content: chunk.content,
+      chunkIndex: chunk.chunkIndex,
+      tags: matchedTags.join(','),
+    );
+  }
+
+  /// Tag auto-detection rules: tag name → keywords that indicate the tag
+  static const _autoTagRules = <String, List<String>>{
+    // Diesel sub-topics
+    'cooling': ['overheat', 'coolant', 'impeller', 'thermostat', 'heat exchanger', 'raw water cooling', 'temperature gauge'],
+    'fuel_system': ['fuel filter', 'fuel line', 'diesel bug', 'bleed', 'injection pump', 'injector', 'water separator', 'racor', 'fuel tank'],
+    'starting': ['won\'t start', 'no start', 'cranking', 'glow plug', 'starter motor', 'starting circuit'],
+    'exhaust': ['exhaust', 'mixing elbow', 'wet exhaust', 'muffler', 'smoke color', 'black smoke', 'white smoke', 'blue smoke'],
+    'engine_electrical': ['alternator', 'drive belt', 'charging circuit', 'starter solenoid'],
+    'oil_lubrication': ['oil change', 'oil filter', 'oil pressure', 'engine oil', 'transmission fluid', 'gear oil'],
+    'propulsion': ['propeller', 'prop shaft', 'cutlass bearing', 'saildrive', 'transmission', 'shaft seal', 'stuffing box'],
+    // Electrical sub-topics
+    'battery_mgmt': ['battery', 'state of charge', 'voltage', 'amp hour', 'deep cycle', 'agm', 'lithium', 'lifepo4', 'equalization'],
+    'wiring': ['wire', 'wiring', 'crimp', 'connection', 'terminal', 'splice', 'tinned copper', 'heat shrink', 'abyc'],
+    'diagnostics': ['multimeter', 'voltage drop', 'continuity', 'resistance', 'ammeter', 'parasitic drain'],
+    'solar_wind': ['solar panel', 'mppt', 'pwm', 'charge controller', 'wind generator'],
+    'instruments': ['vhf', 'radio', 'chartplotter', 'autopilot', 'radar', 'ais', 'antenna'],
+    'shore_power': ['shore power', 'inverter', 'galvanic isolator', 'isolation transformer'],
+    // Plumbing sub-topics
+    'through_hulls': ['through-hull', 'seacock', 'ball valve', 'gate valve', 'wooden plug', 'sinking'],
+    'heads': ['marine head', 'toilet', 'joker valve', 'holding tank', 'macerator', 'y-valve', 'pumpout'],
+    'water_system': ['water pump', 'water tank', 'fresh water', 'pressure pump', 'accumulator', 'watermaker', 'foot pump'],
+    'bilge': ['bilge pump', 'float switch', 'bilge', 'limber hole'],
+    'sealants': ['sealant', '5200', '4200', 'sikaflex', 'silicone', 'butyl tape', 'bedding'],
+    'leak_repair': ['emergency patch', 'collision mat', 'underwater epoxy', 'leak repair'],
+    // Seamanship sub-topics
+    'knots_lines': ['bowline', 'cleat hitch', 'clove hitch', 'sheet bend', 'rolling hitch', 'splice', 'whipping', 'knot'],
+    'emergencies': ['mayday', 'pan-pan', 'distress', 'man overboard', 'mob', 'fire fighting', 'abandon ship', 'epirb'],
+    'anchoring': ['anchor', 'anchoring', 'anchor rode', 'dragging', 'fouled anchor', 'chain'],
+    'weather_heavy': ['heavy weather', 'storm', 'heave to', 'heaving to', 'drogue', 'sea anchor', 'lying ahull'],
+    'first_aid': ['first aid', 'hypothermia', 'burn', 'fracture', 'bleeding', 'cpr', 'seasick'],
+    'navigation': ['compass', 'dead reckoning', 'celestial', 'chart', 'bearing', 'fix'],
+    // Fiberglass sub-topics
+    'gelcoat': ['gelcoat', 'gel coat', 'scratch', 'chip', 'crazing', 'polish'],
+    'structural': ['delamination', 'core rot', 'blister', 'osmotic', 'balsa core', 'foam core', 'keel bolt', 'rudder'],
+    'bottom': ['antifouling', 'bottom paint', 'barrier coat', 'haul out', 'ablative'],
+    'resin_work': ['epoxy', 'polyester resin', 'fiberglass cloth', 'layup', 'hardener', 'mixing ratio', 'fairing compound'],
+    // Rigging sub-topics
+    'standing_rig': ['shroud', 'stay', 'forestay', 'backstay', 'spreader', 'turnbuckle', 'swage', 'chainplate'],
+    'running_rig': ['halyard', 'sheet', 'control line', 'dyneema', 'block', 'clutch'],
+    'sails': ['sail repair', 'sail tape', 'batten', 'uv cover', 'leech line', 'stitching', 'palm and needle'],
+    'hardware': ['winch', 'roller furling', 'furler', 'gooseneck', 'vang', 'traveler'],
+  };
 
   /// Chunk a markdown document by headings (## and ###)
   List<KnowledgeChunk> _chunkMarkdown(String markdown, SkillPack pack) {
@@ -106,7 +206,7 @@ class SkillPackService {
       ));
     }
 
-    // If chunks are too large (>1000 chars), split them further
+    // If chunks are too large (>1500 chars), split them further
     final refinedChunks = <KnowledgeChunk>[];
     int finalIndex = 0;
     for (final chunk in chunks) {

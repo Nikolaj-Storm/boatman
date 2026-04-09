@@ -2,14 +2,17 @@ import 'dart:async';
 import 'package:boatman/models/boat_profile.dart';
 import 'package:boatman/models/knowledge_chunk.dart';
 import 'package:boatman/services/database_service.dart';
+import 'package:boatman/services/query_router.dart';
 
 /// AI service wrapping NobodyWho for on-device inference.
 ///
-/// In the simulator/dev environment, this uses a mock implementation.
-/// On real devices, it initializes NobodyWho with a GGUF model.
+/// Uses QueryRouter to classify queries and route them to the right
+/// knowledge categories before retrieval. In mock mode, generates
+/// realistic responses from the retrieved chunks.
 class AiService {
   bool _isInitialized = false;
-  bool _useMock = true; // Will be false when NobodyWho model is available
+  bool _useMock = true;
+  final QueryRouter _router = QueryRouter();
 
   bool get isInitialized => _isInitialized;
 
@@ -19,9 +22,9 @@ class AiService {
     Function(double)? onProgress,
   }) async {
     // TODO: Initialize NobodyWho when model is available
-    // final chat = Chat(modelPath);
-    //
-    // For now, use mock mode for simulator development
+    // await NobodyWho.init();
+    // _model = await Model.load(modelPath: modelPath);
+    // _chat = Chat(model: _model, systemPrompt: _systemPrompt);
     _useMock = true;
     _isInitialized = true;
   }
@@ -32,38 +35,47 @@ class AiService {
     _isInitialized = true;
   }
 
-  /// Generate a response using RAG (retrieval-augmented generation)
+  /// Generate a response using routed RAG
   ///
-  /// 1. Searches the knowledge base for relevant chunks
-  /// 2. Builds a prompt with boat context + relevant knowledge
-  /// 3. Sends to the LLM for response generation
+  /// 1. Routes the query to relevant categories via QueryRouter
+  /// 2. Searches the knowledge base with category-weighted scoring
+  /// 3. Builds a prompt with boat context + ranked knowledge
+  /// 4. Generates a response (mock or real LLM)
   Future<String> chat({
     required String userMessage,
     required BoatProfile boat,
     required DatabaseService db,
     List<String>? conversationHistory,
   }) async {
-    // Step 1: Retrieve relevant knowledge chunks
-    final relevantChunks = await db.searchChunks(userMessage);
+    // Step 1: Route the query to relevant knowledge categories
+    final routedCategories = _router.route(userMessage);
 
-    // Step 2: Build the prompt with context
-    // When NobodyWho is integrated, this prompt goes to the on-device LLM
-    final _ = _buildPrompt(
+    // Step 2: Retrieve and rank knowledge chunks using routed categories
+    final rankedChunks = await db.routedSearch(userMessage, routedCategories);
+
+    // Step 3: Generate response (mock or real LLM)
+    if (_useMock) {
+      return _mockResponse(userMessage, rankedChunks, routedCategories, boat);
+    }
+
+    // Real LLM path: build prompt with context and send to NobodyWho
+    final queryTags = _router.extractTags(userMessage);
+    final chunks = rankedChunks.map((r) => r.chunk).toList();
+    final prompt = _buildPrompt(
       userMessage: userMessage,
       boat: boat,
-      chunks: relevantChunks,
+      chunks: chunks,
+      routedCategories: routedCategories,
+      queryTags: queryTags,
       history: conversationHistory,
     );
 
-    // Step 3: Generate response
-    if (_useMock) {
-      return _mockResponse(userMessage, relevantChunks, boat);
-    }
-
-    // TODO: Real NobodyWho inference (requires Dart >=3.8 / Flutter >=3.41.6)
+    // TODO: Wire up NobodyWho (requires Dart >=3.8 / Flutter >=3.41.6)
     // final response = await _chat!.ask(prompt).completed();
     // return response;
-    return 'AI model not loaded. Please download a GGUF model in Settings.';
+    return prompt.isNotEmpty
+        ? 'AI model not loaded. Please download a GGUF model in Settings.'
+        : '';
   }
 
   /// Stream a response token by token
@@ -84,7 +96,7 @@ class AiService {
     final words = response.split(' ');
     for (int i = 0; i < words.length; i++) {
       yield '${words[i]} ';
-      await Future.delayed(const Duration(milliseconds: 30));
+      await Future.delayed(const Duration(milliseconds: 20));
     }
   }
 
@@ -92,6 +104,8 @@ class AiService {
     required String userMessage,
     required BoatProfile boat,
     required List<KnowledgeChunk> chunks,
+    required List<ScoredCategory> routedCategories,
+    required List<String> queryTags,
     List<String>? history,
   }) {
     final buffer = StringBuffer();
@@ -100,15 +114,30 @@ class AiService {
     buffer.writeln('You help sailors diagnose problems, perform repairs, and maintain their vessels.');
     buffer.writeln('Always prioritize safety. If a repair could be dangerous, warn the user clearly.');
     buffer.writeln('Be practical and step-by-step in your guidance.');
+    buffer.writeln('Reference the specific technical knowledge provided below when answering.');
+    buffer.writeln('If the knowledge base contains specific part numbers, torque specs, or procedures for the user\'s equipment, include them.');
     buffer.writeln();
+
+    // Routing context — tells the LLM what domains are relevant
+    buffer.writeln('=== QUERY ROUTING ===');
+    buffer.writeln('Detected domains: ${routedCategories.map((c) => '${c.category}(${c.weight.toStringAsFixed(1)})').join(', ')}');
+    if (queryTags.isNotEmpty) {
+      buffer.writeln('Sub-topics: ${queryTags.join(', ')}');
+    }
+    buffer.writeln();
+
     buffer.writeln('=== VESSEL INFORMATION ===');
     buffer.writeln(boat.toAiContext());
     buffer.writeln();
 
     if (chunks.isNotEmpty) {
-      buffer.writeln('=== RELEVANT TECHNICAL KNOWLEDGE ===');
-      for (final chunk in chunks) {
-        buffer.writeln('--- ${chunk.title} (${chunk.sourceId}) ---');
+      buffer.writeln('=== RELEVANT TECHNICAL KNOWLEDGE (ranked by relevance) ===');
+      for (int i = 0; i < chunks.length; i++) {
+        final chunk = chunks[i];
+        buffer.writeln('--- [${i + 1}] ${chunk.title} (${chunk.category}/${chunk.sourceId}) ---');
+        if (chunk.tags.isNotEmpty) {
+          buffer.writeln('Tags: ${chunk.tags}');
+        }
         buffer.writeln(chunk.content);
         buffer.writeln();
       }
@@ -128,53 +157,89 @@ class AiService {
     return buffer.toString();
   }
 
-  /// Mock response for simulator development
+  /// Mock response that uses routed chunks to generate realistic answers
   String _mockResponse(
     String query,
-    List<KnowledgeChunk> chunks,
+    List<RankedChunk> rankedChunks,
+    List<ScoredCategory> categories,
     BoatProfile boat,
   ) {
-    final q = query.toLowerCase();
     final boatCtx = boat.engineMake != null
-        ? 'Based on your ${boat.engineSummary}:\n\n'
+        ? 'Based on your **${boat.engineSummary}**:\n\n'
         : '';
 
-    if (chunks.isNotEmpty) {
-      final sourceNames = chunks.map((c) => c.title).toSet().take(3).join(', ');
-      return '${boatCtx}I found relevant information in: **$sourceNames**\n\n'
-          '${chunks.first.content.substring(0, chunks.first.content.length.clamp(0, 500))}...\n\n'
-          '_[Mock mode — install a GGUF model for real AI responses]_';
+    final primaryCat = categories.isNotEmpty ? categories.first.category : 'general';
+    final catLabel = _categoryLabels[primaryCat] ?? 'General';
+
+    // If we found relevant chunks, build a response from them
+    if (rankedChunks.isNotEmpty) {
+      final buffer = StringBuffer();
+      buffer.write(boatCtx);
+
+      // Show routing info
+      final catSummary = categories
+          .where((c) => c.weight > 0.5)
+          .map((c) => _categoryLabels[c.category] ?? c.category)
+          .take(3)
+          .join(', ');
+      buffer.writeln('**Domain:** $catSummary\n');
+
+      // Show the most relevant chunks as the "answer"
+      final topChunks = rankedChunks.take(3).toList();
+      for (int i = 0; i < topChunks.length; i++) {
+        final rc = topChunks[i];
+        final relevance = rc.score > 8
+            ? 'highly relevant'
+            : rc.score > 4
+                ? 'relevant'
+                : 'supplementary';
+        buffer.writeln('### ${rc.chunk.title}');
+        if (rc.chunk.tags.isNotEmpty) {
+          buffer.writeln('_Tags: ${rc.chunk.tags} | Relevance: $relevance (${rc.score.toStringAsFixed(1)})_\n');
+        }
+
+        // Show a useful portion of the chunk content
+        final content = rc.chunk.content;
+        final maxLen = i == 0 ? 800 : 400; // More from the top result
+        if (content.length > maxLen) {
+          // Try to break at a paragraph boundary
+          final cutoff = content.indexOf('\n\n', maxLen ~/ 2);
+          buffer.writeln(content.substring(0, cutoff > 0 ? cutoff : maxLen));
+          buffer.writeln('\n_...continued in knowledge base_\n');
+        } else {
+          buffer.writeln(content);
+          buffer.writeln();
+        }
+      }
+
+      if (rankedChunks.length > 3) {
+        buffer.writeln('---');
+        buffer.writeln('_${rankedChunks.length - 3} additional relevant sections found. '
+            'Check the **Knowledge** tab for full details._');
+      }
+
+      buffer.writeln('\n_[Mock mode — routing & retrieval active, install GGUF model for AI-synthesized answers]_');
+      return buffer.toString();
     }
 
-    if (q.contains('overheat') || q.contains('hot') || q.contains('temperature')) {
-      return '$boatCtx**Engine Overheating — Diagnostic Steps:**\n\n'
-          '1. **Check raw water intake** — Is the seacock fully open? Any weed or debris blocking the strainer?\n'
-          '2. **Inspect the impeller** — This is the #1 cause. Remove the pump cover and check for missing or damaged vanes.\n'
-          '3. **Check coolant level** — CAUTION: Do not open the cap while hot. Wait for the engine to cool.\n'
-          '4. **Inspect heat exchanger** — Look for zinc anode condition and blockage.\n'
-          '5. **Check the exhaust elbow** — Feel for temperature differences that indicate blockage.\n\n'
-          '**SAFETY:** Shut down the engine if temperature exceeds the red zone. Running an overheated diesel can cause head gasket failure or seizure.\n\n'
-          '_[Mock mode — install a GGUF model for real AI responses]_';
-    }
-
-    if (q.contains('battery') || q.contains('voltage') || q.contains('charge')) {
-      return '$boatCtx**Battery Troubleshooting:**\n\n'
-          '1. Check voltage with a multimeter — fully charged 12V battery should read 12.6-12.8V\n'
-          '2. Below 12.4V means the battery needs charging\n'
-          '3. Below 12.0V indicates a significantly discharged battery\n'
-          '4. Check all terminal connections for corrosion (white/green buildup)\n'
-          '5. Clean terminals with a wire brush and apply petroleum jelly\n\n'
-          '_[Mock mode — install a GGUF model for real AI responses]_';
-    }
-
-    return '${boatCtx}I can help you with that! In full mode (with a downloaded AI model), I would:\n\n'
-        '1. Search your vessel-specific manuals and skill packs\n'
-        '2. Find relevant troubleshooting steps for your specific equipment\n'
-        '3. Provide step-by-step repair guidance with part numbers and specs\n\n'
-        'For now in mock mode, try asking about:\n'
-        '- Engine overheating\n'
-        '- Battery problems\n'
-        '- Or any topic covered by loaded skill packs\n\n'
+    // Fallback: no chunks found — give a helpful category-aware message
+    return '$boatCtx**$catLabel**\n\n'
+        'I searched the knowledge base but didn\'t find a strong match for your question. '
+        'This might be because:\n\n'
+        '1. The relevant skill pack isn\'t loaded yet — check the **Knowledge** tab\n'
+        '2. Try rephrasing with more specific terms (e.g., "impeller replacement" instead of "pump broken")\n'
+        '3. Import your equipment\'s manual (PDF) for vessel-specific information\n\n'
+        'I routed your query to: ${categories.map((c) => "${c.category}(${c.weight.toStringAsFixed(1)})").join(", ")}\n\n'
         '_[Mock mode — install a GGUF model for real AI responses]_';
   }
+
+  static const _categoryLabels = <String, String>{
+    'diesel': 'Engine & Propulsion',
+    'electrical': 'Electrical Systems',
+    'plumbing': 'Plumbing & Water',
+    'seamanship': 'Seamanship & Emergency',
+    'fiberglass': 'Hull & Fiberglass',
+    'rigging': 'Rigging & Sails',
+    'general': 'General Maintenance',
+  };
 }

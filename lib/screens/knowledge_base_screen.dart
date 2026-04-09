@@ -18,6 +18,7 @@ class _KnowledgeBaseScreenState extends State<KnowledgeBaseScreen>
   late TabController _tabController;
   int _totalChunks = 0;
   List<String> _loadedSources = [];
+  Map<String, int> _categoryCounts = {};
 
   @override
   void initState() {
@@ -36,9 +37,11 @@ class _KnowledgeBaseScreenState extends State<KnowledgeBaseScreen>
     final db = context.read<DatabaseService>();
     final chunks = await db.getChunkCount();
     final sources = await db.getLoadedSources();
+    final catCounts = await db.getChunkCountByCategory();
     setState(() {
       _totalChunks = chunks;
       _loadedSources = sources;
+      _categoryCounts = catCounts;
     });
   }
 
@@ -49,24 +52,40 @@ class _KnowledgeBaseScreenState extends State<KnowledgeBaseScreen>
         // Stats bar
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.storage,
-                  size: 20, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                '$_totalChunks knowledge chunks loaded',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+              Row(
+                children: [
+                  Icon(Icons.storage,
+                      size: 20, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$_totalChunks chunks across ${_loadedSources.length} packs',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ],
               ),
-              const Spacer(),
-              Text(
-                '${_loadedSources.length} sources',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              if (_categoryCounts.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: _categoryCounts.entries.map((e) {
+                    return Chip(
+                      avatar: Icon(_categoryIcon(e.key), size: 14),
+                      label: Text('${e.key}: ${e.value}',
+                          style: const TextStyle(fontSize: 11)),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                    );
+                  }).toList(),
+                ),
+              ],
             ],
           ),
         ),
@@ -204,6 +223,19 @@ class _KnowledgeBaseScreenState extends State<KnowledgeBaseScreen>
         builder: (_) => _SkillPackViewScreen(pack: pack),
       ),
     );
+  }
+
+  IconData _categoryIcon(String category) {
+    return switch (category) {
+      'diesel' => Icons.engineering,
+      'electrical' => Icons.bolt,
+      'plumbing' => Icons.plumbing,
+      'seamanship' => Icons.sailing,
+      'fiberglass' => Icons.build,
+      'rigging' => Icons.settings,
+      'general' => Icons.handyman,
+      _ => Icons.folder,
+    };
   }
 
   void _importManual() {

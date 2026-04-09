@@ -2,10 +2,11 @@ class KnowledgeChunk {
   final String id;
   final String sourceId; // skill pack name or manual filename
   final String sourceType; // 'skill_pack' or 'manual'
-  final String category; // 'diesel', 'electrical', 'plumbing', etc.
+  final String category; // 'diesel', 'electrical', 'plumbing', 'seamanship', 'fiberglass', 'rigging', 'general'
   final String title; // section heading
   final String content; // the actual text chunk
   final int chunkIndex; // order within source
+  final String tags; // comma-separated sub-topic tags for fine-grained routing
   final List<double>? embedding; // vector embedding for RAG
 
   KnowledgeChunk({
@@ -16,8 +17,17 @@ class KnowledgeChunk {
     required this.title,
     required this.content,
     required this.chunkIndex,
+    this.tags = '',
     this.embedding,
   });
+
+  List<String> get tagList =>
+      tags.isEmpty ? [] : tags.split(',').map((t) => t.trim()).toList();
+
+  bool hasTag(String tag) => tagList.contains(tag);
+
+  bool hasAnyTag(List<String> checkTags) =>
+      checkTags.any((t) => tagList.contains(t));
 
   Map<String, dynamic> toMap() {
     return {
@@ -28,6 +38,7 @@ class KnowledgeChunk {
       'title': title,
       'content': content,
       'chunk_index': chunkIndex,
+      'tags': tags,
     };
   }
 
@@ -40,6 +51,7 @@ class KnowledgeChunk {
       title: map['title'] as String,
       content: map['content'] as String,
       chunkIndex: map['chunk_index'] as int,
+      tags: map['tags'] as String? ?? '',
     );
   }
 }

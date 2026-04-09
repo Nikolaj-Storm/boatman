@@ -252,12 +252,14 @@ class _ChatScreenState extends State<ChatScreen> {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
-                _buildSuggestionChip('Engine overheating'),
-                _buildSuggestionChip('Battery not charging'),
-                _buildSuggestionChip('Bilge pump not working'),
-                _buildSuggestionChip('Head is clogged'),
-                _buildSuggestionChip('Fuel filter change'),
-                _buildSuggestionChip('Impeller replacement'),
+                _buildSuggestionChip('Engine overheating', Icons.engineering),
+                _buildSuggestionChip('Battery not charging', Icons.bolt),
+                _buildSuggestionChip('Bilge pump not working', Icons.plumbing),
+                _buildSuggestionChip('How to tie a bowline', Icons.sailing),
+                _buildSuggestionChip('Gelcoat scratch repair', Icons.build),
+                _buildSuggestionChip('Impeller replacement', Icons.engineering),
+                _buildSuggestionChip('Winch maintenance', Icons.settings),
+                _buildSuggestionChip('Man overboard procedure', Icons.warning),
               ],
             ),
           ],
@@ -266,8 +268,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildSuggestionChip(String text) {
+  Widget _buildSuggestionChip(String text, IconData icon) {
     return ActionChip(
+      avatar: Icon(icon, size: 16),
       label: Text(text),
       onPressed: () {
         _messageController.text = text;
