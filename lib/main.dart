@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:boatman/services/database_service.dart';
 import 'package:boatman/services/ai_service.dart';
 import 'package:boatman/services/skill_pack_service.dart';
+import 'package:boatman/services/manual_import_service.dart';
+import 'package:boatman/services/manual_search_service.dart';
 import 'package:boatman/models/app_state.dart';
 import 'package:boatman/theme/boatman_theme.dart';
 import 'package:boatman/screens/home_screen.dart';
@@ -16,6 +18,8 @@ void main() async {
 
   final skillPackService = SkillPackService();
   final aiService = AiService();
+  final manualImportService = ManualImportService();
+  final manualSearchService = ManualSearchService();
 
   runApp(
     MultiProvider(
@@ -24,6 +28,8 @@ void main() async {
         Provider.value(value: dbService),
         Provider.value(value: skillPackService),
         Provider.value(value: aiService),
+        Provider.value(value: manualImportService),
+        Provider.value(value: manualSearchService),
       ],
       child: const BoatmanApp(),
     ),

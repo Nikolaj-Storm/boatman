@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import 'package:boatman/models/boat_profile.dart';
 import 'package:boatman/models/chat_message.dart';
 import 'package:boatman/models/knowledge_chunk.dart';
+import 'package:boatman/services/manual_import_service.dart';
 import 'package:boatman/services/query_router.dart';
 
 class DatabaseService {
@@ -14,15 +15,27 @@ class DatabaseService {
 
     _db = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await _createTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          // Add tags column to knowledge_chunks
           await db.execute('ALTER TABLE knowledge_chunks ADD COLUMN tags TEXT DEFAULT ""');
           await db.execute('CREATE INDEX IF NOT EXISTS idx_chunks_tags ON knowledge_chunks(tags)');
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS manual_meta (
+              source_id TEXT PRIMARY KEY,
+              file_name TEXT NOT NULL,
+              display_name TEXT NOT NULL,
+              category TEXT NOT NULL,
+              chunk_count INTEGER NOT NULL,
+              imported_at TEXT NOT NULL,
+              file_path TEXT
+            )
+          ''');
         }
       },
     );
@@ -82,6 +95,18 @@ class DatabaseService {
     await db.execute('CREATE INDEX idx_chunks_category ON knowledge_chunks(category)');
     await db.execute('CREATE INDEX idx_chunks_source ON knowledge_chunks(source_id)');
     await db.execute('CREATE INDEX idx_chunks_tags ON knowledge_chunks(tags)');
+
+    await db.execute('''
+      CREATE TABLE manual_meta (
+        source_id TEXT PRIMARY KEY,
+        file_name TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        chunk_count INTEGER NOT NULL,
+        imported_at TEXT NOT NULL,
+        file_path TEXT
+      )
+    ''');
 
     await db.execute('''
       CREATE TABLE chat_sessions (
@@ -332,6 +357,28 @@ class DatabaseService {
 
   Future<void> deleteChunksBySource(String sourceId) async {
     await db.delete('knowledge_chunks', where: 'source_id = ?', whereArgs: [sourceId]);
+  }
+
+  // Manual metadata
+  Future<void> saveManualMeta(ManualMeta meta) async {
+    await db.insert('manual_meta', meta.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<ManualMeta>> getManualMetas() async {
+    final maps = await db.query('manual_meta', orderBy: 'imported_at DESC');
+    return maps.map((m) => ManualMeta.fromMap(m)).toList();
+  }
+
+  Future<ManualMeta?> getManualMeta(String sourceId) async {
+    final maps = await db.query('manual_meta',
+        where: 'source_id = ?', whereArgs: [sourceId]);
+    if (maps.isEmpty) return null;
+    return ManualMeta.fromMap(maps.first);
+  }
+
+  Future<void> deleteManualMeta(String sourceId) async {
+    await db.delete('manual_meta', where: 'source_id = ?', whereArgs: [sourceId]);
   }
 
   // Chat sessions
