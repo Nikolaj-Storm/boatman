@@ -1,0 +1,24 @@
+# Flutter
+*.dart_tool/
+*.flutter-plugins
+*.flutter-plugins-dependencies
+.packages
+build/
+.dart_tool/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models (too large for git)
+*.gguf
+
+# Environment
+.env
+.env.local
